@@ -25,9 +25,13 @@ const props = defineProps({
   // 과제 6) 검색으로 추가한 도시만 카드에서 뺄 수 있게 한다.
   // 넘기지 않으면 삭제 버튼이 아예 없으므로 과제 3 화면은 그대로다.
   removable: { type: Boolean, default: false },
+  // 과제 7) 즐겨찾기. favoritable을 넘기지 않으면 별표가 아예 렌더링되지 않으므로
+  // 이 카드를 쓰는 과제 3 화면은 예전 그대로다.
+  favoritable: { type: Boolean, default: false },
+  favorite: { type: Boolean, default: false },
   feelsLike: { type: Number, default: null },
 })
-defineEmits(['select-card', 'click-detail', 'remove-card'])
+defineEmits(['select-card', 'click-detail', 'remove-card', 'toggle-favorite'])
 
 // 날씨 상태별 카드 색상/아이콘: 공통 테이블(weatherStatus.js)에서 찾아 쓴다.
 const meta = computed(() => statusMeta(props.city.status))
@@ -59,6 +63,15 @@ const nameParts = computed(() => {
     @click="$emit('select-card', city)"
   >
     <button
+      v-if="favoritable"
+      class="weather-card__star"
+      :class="{ 'weather-card__star--on': favorite }"
+      :title="favorite ? '즐겨찾기 해제' : '즐겨찾기 추가'"
+      @click.stop="$emit('toggle-favorite', city)"
+    >
+      {{ favorite ? '★' : '☆' }}
+    </button>
+    <button
       v-if="removable"
       class="weather-card__remove"
       title="목록에서 빼기"
@@ -73,6 +86,9 @@ const nameParts = computed(() => {
     </p>
     <p class="weather-card__temp sk-num">{{ displayTemp ?? city.temp }}{{ unitSymbol }}</p>
     <p class="weather-card__status">{{ city.status }}{{ meta.icon }}</p>
+
+    <!-- 선택하면 테두리만 바뀌어서 눌렸는지 알기 어려웠다. 글자로도 알려준다. -->
+    <p v-if="selected" class="weather-card__picked">선택됨</p>
 
     <button class="detail-btn" @click.stop="$emit('click-detail', city)">
       {{ detailLabel || (expanded ? '상세보기 닫기 ▲' : '상세보기 ▼') }}
@@ -134,6 +150,33 @@ const nameParts = computed(() => {
 .weather-card--default {
   background: linear-gradient(160deg, var(--sk-w-default-bg) 0%, var(--sk-surface) 60%);
 }
+.weather-card__star {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  /* 아이콘만 키우는 게 아니라 누를 수 있는 면적을 함께 넓힌다.
+     32px는 손가락으로도 빗나가지 않는 최소 크기다. */
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: none;
+  border-radius: var(--sk-radius-sm);
+  color: var(--sk-text-muted);
+  font-size: var(--sk-text-lg);
+  line-height: 1;
+  cursor: pointer;
+  transition: transform var(--sk-transition);
+}
+.weather-card__star:hover {
+  background-color: var(--sk-surface-hover);
+  transform: scale(1.15);
+}
+.weather-card__star--on {
+  color: var(--sk-w-sunny);
+}
 .weather-card__remove {
   position: absolute;
   top: 6px;
@@ -173,6 +216,12 @@ const nameParts = computed(() => {
   margin: 0;
 }
 
+.weather-card__picked {
+  margin: var(--sk-space-2) 0 0;
+  font-size: var(--sk-text-xs);
+  font-weight: 700;
+  color: var(--sk-accent);
+}
 .detail-btn {
   margin-top: 10px;
   width: 100%;

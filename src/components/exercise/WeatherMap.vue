@@ -10,23 +10,17 @@
 import { ref, onMounted, onUnmounted, watch } from 'vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import { DEFAULT_MAP_LAYER } from '@/data/mapLayers.js'
 
 const props = defineProps({
   lat: { type: Number, required: true },
   lon: { type: Number, required: true },
   name: { type: String, default: '' },
+  // 어떤 레이어를 겹칠지는 카드 헤더의 버튼이 정한다. 이 컴포넌트는 그리기만 한다.
+  layer: { type: String, default: DEFAULT_MAP_LAYER },
 })
 
 const API_KEY = import.meta.env.VITE_OPENWEATHER_KEY
-
-// 겹쳐 그릴 수 있는 날씨 레이어들.
-// 강수(precipitation)는 비가 안 오면 아무것도 안 보이므로, 기본값은 항상 보이는 기온으로 둔다.
-const LAYERS = [
-  { key: 'temp_new', label: '기온' },
-  { key: 'clouds_new', label: '구름' },
-  { key: 'precipitation_new', label: '강수' },
-]
-const activeLayer = ref('temp_new')
 
 const mapEl = ref(null)
 let map = null
@@ -36,7 +30,7 @@ const drawWeatherLayer = () => {
   if (!map) return
   if (weatherTile) map.removeLayer(weatherTile)
   weatherTile = L.tileLayer(
-    `https://tile.openweathermap.org/map/${activeLayer.value}/{z}/{x}/{y}.png?appid=${API_KEY}`,
+    `https://tile.openweathermap.org/map/${props.layer}/{z}/{x}/{y}.png?appid=${API_KEY}`,
     // 날씨 타일은 반투명이라 옅게 두면 바탕 지도에 묻힌다.
     { opacity: 0.85 },
   ).addTo(map)
@@ -74,8 +68,8 @@ onMounted(() => {
     .bindTooltip(props.name, { permanent: true, direction: 'top', offset: [0, -8] })
 })
 
-// 레이어 버튼을 누르면 겹친 타일만 갈아 끼운다. (지도는 다시 만들지 않는다)
-watch(activeLayer, drawWeatherLayer)
+// 레이어가 바뀌면 겹친 타일만 갈아 끼운다. (지도는 다시 만들지 않는다)
+watch(() => props.layer, drawWeatherLayer)
 
 onUnmounted(() => {
   // 지도를 정리하지 않으면 컴포넌트가 사라져도 DOM과 이벤트 리스너가 남는다.
@@ -86,49 +80,14 @@ onUnmounted(() => {
 
 <template>
   <div>
-    <div class="layers">
-      <button
-        v-for="layer in LAYERS"
-        :key="layer.key"
-        class="layers__btn"
-        :class="{ 'layers__btn--active': activeLayer === layer.key }"
-        @click="activeLayer = layer.key"
-      >
-        {{ layer.label }}
-      </button>
-      <span class="layers__hint">
-        넓은 지역일수록 잘 보입니다. 지도를 끌어서 움직일 수 있습니다.
-      </span>
-    </div>
     <div ref="mapEl" class="map" />
+    <p class="map__hint">넓은 지역일수록 잘 보입니다. 지도를 끌어서 움직일 수 있습니다.</p>
   </div>
 </template>
 
 <style scoped>
-.layers {
-  display: flex;
-  align-items: center;
-  gap: var(--sk-space-2);
-  flex-wrap: wrap;
-  margin-bottom: var(--sk-space-3);
-}
-.layers__btn {
-  border: 1px solid var(--sk-border);
-  background-color: var(--sk-surface);
-  border-radius: var(--sk-radius-pill);
-  padding: var(--sk-space-2) var(--sk-space-4);
-  font-size: var(--sk-text-sm);
-  font-weight: 600;
-  color: var(--sk-text-muted);
-  cursor: pointer;
-}
-.layers__btn--active {
-  background-color: var(--sk-accent);
-  border-color: var(--sk-accent);
-  color: var(--sk-text-invert);
-}
-.layers__hint {
-  margin-left: auto;
+.map__hint {
+  margin: var(--sk-space-3) 0 0;
   font-size: var(--sk-text-xs);
   color: var(--sk-text-muted);
 }

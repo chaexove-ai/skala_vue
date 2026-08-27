@@ -12,6 +12,12 @@ import { reverseGeocode } from '@/api/geocodingApi.js'
 // (반대로 정렬 기준이나 선택한 도시는 이번 화면에서만 의미가 있어서 저장하지 않는다)
 const STORAGE_KEY = 'skala-vue:extra-cities'
 
+// 추가할 수 있는 도시 수를 제한한다.
+// 화면을 열 때마다 기본 도시 + 추가 도시를 Promise.all로 한꺼번에 호출하는데,
+// OpenWeatherMap 무료 요금제가 분당 60회라서 도시가 늘수록 한 번의 새로고침으로 한도를 넘길 수 있다.
+// 10곳이면 총 21회라 한도의 3분의 1 수준이라 여유가 있다.
+export const MAX_EXTRA_CITIES = 10
+
 const loadExtraCities = () => {
   try {
     return JSON.parse(localStorage.getItem(STORAGE_KEY)) ?? []
@@ -47,6 +53,8 @@ export const useWeatherStore = defineStore('weather', {
     // 화면은 이 목록만 보면 된다.
     list: (state) => state.entries,
     hasData: (state) => state.entries.length > 0,
+    extraCount: (state) => state.extraCities.length,
+    canAddMore: (state) => state.extraCities.length < MAX_EXTRA_CITIES,
     findById: (state) => (cityId) => state.entries.find((city) => city.id === cityId) ?? null,
   },
 
@@ -78,6 +86,13 @@ export const useWeatherStore = defineStore('weather', {
     // 과제 6-3) 검색으로 찾은 도시를 목록에 추가한다.
     // 좌표는 지오코딩(Nominatim)이 알려주고, 날씨는 OpenWeatherMap이 채운다.
     async addCity(place) {
+      if (this.extraCities.length >= MAX_EXTRA_CITIES) {
+        return {
+          added: false,
+          reason: `추가 도시는 최대 ${MAX_EXTRA_CITIES}곳까지입니다. 카드의 ✕로 하나 지운 뒤 다시 시도해 주세요.`,
+        }
+      }
+
       const id = `extra_${place.lat.toFixed(3)}_${place.lon.toFixed(3)}`
       if (this.entries.some((entry) => entry.id === id)) {
         return { added: false, reason: '이미 목록에 있는 도시입니다.' }

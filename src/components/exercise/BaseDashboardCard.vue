@@ -43,6 +43,8 @@ defineProps({
 }
 .card-block__title {
   margin: 0;
+  /* 한글이 글자 단위로 끊겨 '지역별 날 / 씨 현황'처럼 보이는 것을 막는다. */
+  word-break: keep-all;
   font-size: 18px;
   font-weight: 700;
   letter-spacing: 0.04em;

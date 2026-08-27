@@ -40,6 +40,7 @@ import SlotNamedParent from '@/components/practices/component/SlotNamedParent.vu
 import SlotScopedParent from '@/components/practices/component/SlotScopedParent.vue'
 import AxiosWeather from '@/components/practices/library/AxiosWeather.vue'
 import AxiosJson from '@/components/practices/library/AxiosJson.vue'
+import ElementPlus from '@/components/practices/library/ElementPlus.vue'
 </script>
 
 <template>
@@ -119,5 +120,7 @@ import AxiosJson from '@/components/practices/library/AxiosJson.vue'
   <AxiosWeather />
   <hr />
   <AxiosJson />
+  <hr />
+  <ElementPlus />
   </div>
 </template>

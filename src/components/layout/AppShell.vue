@@ -11,7 +11,6 @@ import { useRoute } from 'vue-router'
 import { useWeatherStore } from '@/stores/weatherStore.js'
 import { useDashboardStore } from '@/stores/dashboardStore.js'
 import { useConfigStore } from '@/stores/configStore.js'
-import { statusMeta } from '@/data/weatherStatus.js'
 
 defineProps({
   title: { type: String, default: '' },
@@ -104,9 +103,6 @@ const timeOfDay = computed(() => {
             <span class="hero__city">{{ heroCity.name }}</span>
             <span class="hero__temp sk-num">
               {{ config.displayTemp(heroCity.temp) }}{{ config.unitSymbol }}
-            </span>
-            <span class="hero__status">
-              {{ heroCity.status }}{{ statusMeta(heroCity.status).icon }}
             </span>
           </div>
         </div>
@@ -239,14 +235,13 @@ const timeOfDay = computed(() => {
 }
 .hero__city {
   font-size: var(--sk-text-lg);
-  font-weight: 800;
+  font-weight: 600;
 }
 .hero__temp {
   font-size: var(--sk-text-2xl);
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: -0.02em;
 }
-.hero__status,
 .hero__subtitle {
   margin: var(--sk-space-2) 0 0;
   font-size: var(--sk-text-base);
@@ -281,6 +276,21 @@ const timeOfDay = computed(() => {
 }
 
 @media (max-width: 640px) {
+  /* 좁은 화면에서는 브랜드·내비·액션이 한 줄에 들어가지 않아 내비가 밖으로 밀려 잘렸다.
+     내비를 아래 줄로 내려 폭을 다 쓰게 한다. */
+  .shell__nav {
+    order: 3;
+    flex-basis: 100%;
+    padding-bottom: var(--sk-space-2);
+  }
+  .shell__actions {
+    margin-left: auto;
+  }
+  .shell__bar-inner {
+    gap: var(--sk-space-3);
+    padding-top: var(--sk-space-2);
+  }
+
   .hero {
     padding: var(--sk-space-6) 0 var(--sk-space-5);
   }

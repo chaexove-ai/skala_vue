@@ -5,9 +5,10 @@
 //      → 상세 페이지가 같은 데이터를 봐야 하기 때문.
 //   2. 상세보기를 카드 안에서 펼치지 않고 router.push로 상세 페이지(/weather/:cityId)로 이동한다.
 // 반응형 상태를 이 화면이 모두 소유하고, 자식은 props/emits로만 통신하는 구조는 그대로다.
-import { ref, computed, watch, watchEffect, onMounted } from 'vue'
+import { ref, reactive, computed, watch, watchEffect, nextTick, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useWeatherStore } from '@/stores/weatherStore.js'
+import { useWeatherStore, MAX_EXTRA_CITIES } from '@/stores/weatherStore.js'
+import { useFavoriteStore } from '@/stores/favoriteStore.js'
 import { searchPlaces } from '@/api/geocodingApi.js'
 import { statusMeta } from '@/data/weatherStatus.js'
 import { useConfigStore } from '@/stores/configStore.js'
@@ -21,9 +22,33 @@ const router = useRouter()
 const config = useConfigStore()
 const dashboard = useDashboardStore()
 const weather = useWeatherStore()
+const favorite = useFavoriteStore()
 
 // 화면이 열릴 때 실제 날씨를 불러온다. 이미 받아둔 게 있으면 스토어가 알아서 건너뛴다.
 onMounted(() => weather.loadAll())
+
+// "언제 받은 값인가"를 보여주기 위한 시계. 30초마다 갱신한다.
+// 날씨는 시간이 지나면 낡는데, 지금까지는 화면만 보고는 방금 값인지 10분 전 값인지 알 수 없었다.
+const now = ref(Date.now())
+let clockId = null
+onMounted(() => {
+  clockId = setInterval(() => (now.value = Date.now()), 30_000)
+})
+onUnmounted(() => clearInterval(clockId))
+
+const freshness = computed(() => {
+  if (!weather.loadedAt) return ''
+  const minutes = Math.floor((now.value - weather.loadedAt.getTime()) / 60_000)
+  if (minutes < 1) return '방금 기준'
+  if (minutes < 60) return `${minutes}분 전 기준`
+  return `${Math.floor(minutes / 60)}시간 전 기준`
+})
+
+const refresh = async () => {
+  await weather.loadAll({ force: true })
+  now.value = Date.now()
+  if (!weather.error) ElMessage.success('날씨를 새로 받았습니다')
+}
 
 // 서버에서 받아온 목록을 그대로 쓴다. (Mock 배열이 아니라 스토어의 상태)
 const weatherList = computed(() => weather.list)
@@ -39,16 +64,71 @@ const filteredWeatherList = computed(() =>
   weatherList.value.filter((city) => city.name.includes(searchQuery.value.trim())),
 )
 
+// 즐겨찾기한 도시는 목록 위쪽에 따로 모아 보여준다.
+// 토글로 "즐겨찾기만 보기"를 만들 수도 있었지만, 그러면 사용자가 모드를 껐다 켜야 하고
+// 즐겨찾기가 없을 때는 비활성 버튼만 자리를 차지한다. 두 묶음을 함께 보여주면 전환이 필요 없다.
+const favoriteCities = computed(() =>
+  sortedFilteredWeatherList.value.filter((city) => favorite.isFavorite(city.id)),
+)
+const otherCities = computed(() =>
+  sortedFilteredWeatherList.value.filter((city) => !favorite.isFavorite(city.id)),
+)
+
+// 별표를 누르면 카드가 다른 묶음으로 옮겨간다. 무슨 일이 일어났는지 토스트로 알려준다.
+const toggleFavorite = (city) => {
+  const added = favorite.toggle(city.id)
+  ElMessage({
+    message: added ? `${city.name} 즐겨찾기에 추가` : `${city.name} 즐겨찾기에서 해제`,
+    type: added ? 'success' : 'info',
+    duration: 1500,
+  })
+}
+
 // 과제 6-3) 목록에 없는 도시를 외부 지오코딩으로 찾아 추가한다.
 const isAddOpen = ref(false) // '도시 추가' 영역 펼침 여부
-const placeQuery = ref('') // 도시 추가 전용 입력창 (위쪽 검색창과 별개)
+// 도시 추가 폼. UI 라이브러리를 쓰는 이유가 "예쁜 카드"가 아니라 이런 입력 검증에 있다.
+// 규칙을 선언해두면 언제 검사할지(blur/change), 메시지를 어디에 띄울지, 통과 못 하면
+// 제출을 막는 것까지 라이브러리가 처리한다. 직접 만들면 이걸 다 손으로 짜야 한다.
+const placeFormRef = ref(null)
+const placeForm = reactive({ query: '' })
+
+// 지명에 숫자나 기호가 들어가는 경우는 거의 없다. 그런 입력은 검색해도 쓸모없는 결과만 나온다.
+const validatePlaceName = (rule, value, callback) => {
+  if (!value) return callback()
+  if (!/^[가-힣a-zA-Z\s.'-]+$/.test(value)) {
+    return callback(new Error('도시 이름은 한글 또는 영문으로 입력해 주세요.'))
+  }
+  callback()
+}
+
+const placeRules = {
+  query: [
+    { required: true, message: '추가할 도시 이름을 입력해 주세요.', trigger: 'blur' },
+    { min: 2, message: '두 글자 이상 입력해 주세요.', trigger: 'blur' },
+    { max: 30, message: '30자를 넘길 수 없습니다.', trigger: 'blur' },
+    { validator: validatePlaceName, trigger: 'blur' },
+  ],
+}
 const placeResults = ref([])
 const isSearchingPlace = ref(false)
 const placeMessage = ref('')
 
+// 검색 결과가 없을 때 그 검색어를 그대로 '도시 추가'로 넘긴다.
+const searchOutside = async () => {
+  isAddOpen.value = true
+  placeForm.query = searchQuery.value.trim()
+  // 패널이 화면에 그려진 뒤에야 폼(placeFormRef)이 생긴다.
+  // 기다리지 않으면 검증 단계에서 폼을 못 찾아 검색이 조용히 중단된다.
+  await nextTick()
+  searchExternal()
+}
+
 const searchExternal = async () => {
-  const query = placeQuery.value.trim()
-  if (!query) return
+  // 규칙을 통과하지 못하면 여기서 멈춘다. 실패 사유는 폼이 입력창 아래에 직접 표시한다.
+  const valid = await placeFormRef.value?.validate().catch(() => false)
+  if (!valid) return
+
+  const query = placeForm.query.trim()
   isSearchingPlace.value = true
   placeMessage.value = ''
   placeResults.value = []
@@ -56,7 +136,7 @@ const searchExternal = async () => {
     placeResults.value = await searchPlaces(query)
     if (placeResults.value.length === 0) placeMessage.value = `"${query}" 검색 결과가 없습니다.`
   } catch (error) {
-    placeMessage.value = '도시 검색에 실패했습니다.'
+    ElMessage.error('도시 검색에 실패했습니다.')
     console.error('[지오코딩] 실패:', error.message)
   } finally {
     isSearchingPlace.value = false
@@ -66,14 +146,33 @@ const searchExternal = async () => {
 const addPlace = async (place) => {
   try {
     const result = await weather.addCity(place)
-    placeMessage.value = result.added
-      ? `${result.city.name} 추가됨 (현재 ${result.city.temp}°)`
-      : result.reason
-    placeResults.value = []
-    placeQuery.value = ''
+    // 결과를 화면 한구석에 문구로 남기는 것보다, 잠깐 떴다 사라지는 토스트가 맞는 자리다.
+    // 직접 만들면 위치·애니메이션·자동 닫힘·여러 개 쌓일 때 처리까지 다 신경 써야 한다.
+    if (result.added) {
+      ElMessage.success(`${result.city.name} 추가됨 (현재 ${result.city.temp}°)`)
+      placeResults.value = []
+      placeForm.query = ''
+    } else {
+      ElMessage.warning(result.reason)
+    }
   } catch (error) {
-    placeMessage.value = '날씨를 가져오지 못해 추가하지 못했습니다.'
+    ElMessage.error('날씨를 가져오지 못해 추가하지 못했습니다.')
     console.error('[도시 추가] 실패:', error.message)
+  }
+}
+
+// 삭제는 되돌릴 수 없으므로 한 번 묻는다. (el-message-box)
+const confirmRemove = async (city) => {
+  try {
+    await ElMessageBox.confirm(`${city.name}을(를) 목록에서 뺄까요?`, '도시 삭제', {
+      confirmButtonText: '삭제',
+      cancelButtonText: '취소',
+      type: 'warning',
+    })
+    weather.removeCity(city.id)
+    ElMessage.success(`${city.name} 삭제됨`)
+  } catch {
+    // 사용자가 취소를 누르면 reject된다. 아무것도 하지 않는다.
   }
 }
 
@@ -117,6 +216,9 @@ watch(
 
 // 과제 4-3) 상세보기: 카드 안에서 펼치는 대신 Programmatic Navigation으로 상세 페이지로 보낸다.
 // (자식 WeatherCard는 여전히 click-detail 이벤트만 올려보내고, 이동 결정은 이 화면이 한다)
+// 검색 결과가 없을 때 보여줄 문구. 따옴표가 섞여서 템플릿 속성에 직접 쓰기 어려우므로 여기서 만든다.
+const emptyText = computed(() => `"${searchQuery.value.trim()}"와(과) 일치하는 도시가 없습니다.`)
+
 const goToDetail = (city) => {
   router.push(`/weather/${city.id}`)
 }
@@ -130,6 +232,16 @@ const goToDetail = (city) => {
     <BaseDashboardCard :title="searchQuery.trim() ? '검색 결과' : '지역별 날씨 현황'">
       <template #badge>{{ sortedFilteredWeatherList.length }}곳</template>
       <template #actions>
+        <span v-if="freshness" class="freshness">{{ freshness }}</span>
+        <el-button
+          size="small"
+          :loading="weather.isLoading"
+          circle
+          title="날씨 다시 받기"
+          @click="refresh"
+        >
+          ↻
+        </el-button>
         <button class="sort-btn" @click="dashboard.toggleSortOrder()">
           기온순 정렬 · {{ dashboard.sortLabel }}
         </button>
@@ -151,20 +263,40 @@ const goToDetail = (city) => {
 
       <!-- 자주 쓰는 기능이 아니라 평소에는 접어둔다. -->
       <div v-if="isAddOpen" class="place">
-        <input
-          v-model="placeQuery"
-          class="place__input"
-          placeholder="추가할 도시 이름 (예: 강릉, 속초, Tokyo)"
-          @keyup.enter="searchExternal"
-        />
-        <button
-          class="place__btn"
-          :disabled="!placeQuery.trim() || isSearchingPlace"
-          @click="searchExternal"
+        <el-form
+          ref="placeFormRef"
+          :model="placeForm"
+          :rules="placeRules"
+          class="place__form"
+          @submit.prevent="searchExternal"
         >
-          {{ isSearchingPlace ? '찾는 중...' : '좌표 찾기' }}
-        </button>
-        <p class="place__hint">OpenStreetMap에서 좌표를 찾은 뒤 날씨를 불러옵니다.</p>
+          <el-form-item prop="query">
+            <el-input
+              v-model="placeForm.query"
+              placeholder="추가할 도시 이름 (예: 강릉, 속초, Tokyo)"
+              clearable
+              maxlength="30"
+              show-word-limit
+              :disabled="!weather.canAddMore"
+              @keyup.enter="searchExternal"
+            >
+              <template #append>
+                <el-button
+                  type="primary"
+                  :loading="isSearchingPlace"
+                  :disabled="!weather.canAddMore"
+                  @click="searchExternal"
+                >
+                  좌표 찾기
+                </el-button>
+              </template>
+            </el-input>
+          </el-form-item>
+        </el-form>
+        <p class="place__hint">
+          OpenStreetMap에서 좌표를 찾은 뒤 날씨를 불러옵니다. 추가한 도시
+          {{ weather.extraCount }}/{{ MAX_EXTRA_CITIES }}곳
+        </p>
         <p v-if="placeMessage" class="place__msg">{{ placeMessage }}</p>
 
         <ul v-if="placeResults.length > 0" class="place-list">
@@ -176,16 +308,42 @@ const goToDetail = (city) => {
         </ul>
       </div>
 
-      <p v-if="weather.isLoading" class="state">실시간 날씨를 불러오는 중입니다...</p>
-      <p v-else-if="weather.error" class="state state--error">
-        {{ weather.error }}
-        <button class="retry" @click="weather.loadAll({ force: true })">다시 시도</button>
-      </p>
+      <!-- 로딩 중에는 "불러오는 중" 한 줄 대신 카드 모양 자리를 미리 깔아준다.
+           화면이 갑자기 늘어나지 않아서 덜 어수선하다. (el-skeleton) -->
+      <div v-if="weather.isLoading" class="weather-grid">
+        <el-skeleton v-for="n in 11" :key="n" animated>
+          <template #template>
+            <div class="skeleton-card">
+              <el-skeleton-item variant="text" style="width: 40%" />
+              <el-skeleton-item variant="h1" style="width: 60%" />
+              <el-skeleton-item variant="text" style="width: 50%" />
+              <el-skeleton-item variant="button" style="width: 100%" />
+            </div>
+          </template>
+        </el-skeleton>
+      </div>
 
+      <el-alert
+        v-else-if="weather.error"
+        :title="weather.error"
+        type="error"
+        :closable="false"
+        show-icon
+      >
+        <template #default>
+          <el-button size="small" type="primary" @click="weather.loadAll({ force: true })">
+            다시 시도
+          </el-button>
+        </template>
+      </el-alert>
+
+      <!-- 요약줄이 카드보다 위에 있어서, 카드를 눌러도 바뀐 걸 눈치채기 어려웠다.
+           선택이 바뀔 때마다 잠깐 강조해서 어디를 봐야 하는지 알려준다. -->
       <div
         v-if="!weather.isLoading"
+        :key="selectedCityInfo?.id ?? 'none'"
         class="selection"
-        :class="{ 'selection--empty': !selectedCityInfo }"
+        :class="{ 'selection--empty': !selectedCityInfo, 'selection--flash': !!selectedCityInfo }"
       >
         <template v-if="selectedCityInfo">
           <span class="selection__name">{{ selectedCityInfo.name }}</span>
@@ -202,35 +360,116 @@ const goToDetail = (city) => {
         <span v-else>도시 카드를 클릭하면 여기에 선택한 도시가 표시됩니다.</span>
       </div>
 
-      <TransitionGroup
-        v-if="!weather.isLoading && sortedFilteredWeatherList.length > 0"
-        name="card"
-        tag="div"
-        class="weather-grid"
-      >
-        <WeatherCard
-          v-for="city in sortedFilteredWeatherList"
-          :key="city.id"
-          :city="city"
-          :selected="selectedCityInfo?.id === city.id"
-          :query="searchQuery.trim()"
-          :display-temp="config.displayTemp(city.temp)"
-          :unit-symbol="config.unitSymbol"
-          detail-label="상세보기 →"
-          :removable="city.isExtra === true"
-          @select-card="selectCity"
-          @click-detail="goToDetail"
-          @remove-card="weather.removeCity(city.id)"
-        />
-      </TransitionGroup>
-      <p v-else-if="!weather.isLoading && !weather.error" class="empty-message">
-        "{{ searchQuery }}"와(과) 일치하는 도시가 없습니다.
-      </p>
+      <template v-if="!weather.isLoading && sortedFilteredWeatherList.length > 0">
+        <!-- 즐겨찾기한 도시는 위쪽에 따로 모은다. 하나도 없으면 이 묶음 자체가 나타나지 않는다. -->
+        <template v-if="favoriteCities.length > 0">
+          <p class="group-title">★ 즐겨찾기 {{ favoriteCities.length }}곳</p>
+          <TransitionGroup name="card" tag="div" class="weather-grid">
+            <WeatherCard
+              v-for="city in favoriteCities"
+              :key="city.id"
+              :city="city"
+              :selected="selectedCityInfo?.id === city.id"
+              :query="searchQuery.trim()"
+              :display-temp="config.displayTemp(city.temp)"
+              :unit-symbol="config.unitSymbol"
+              detail-label="상세보기 →"
+              :removable="city.isExtra === true"
+              favoritable
+              :favorite="favorite.isFavorite(city.id)"
+              @select-card="selectCity"
+              @click-detail="goToDetail"
+              @toggle-favorite="toggleFavorite"
+              @remove-card="confirmRemove"
+            />
+          </TransitionGroup>
+
+          <p class="group-title group-title--sub">그 밖의 도시 {{ otherCities.length }}곳</p>
+        </template>
+
+        <TransitionGroup name="card" tag="div" class="weather-grid">
+          <WeatherCard
+            v-for="city in otherCities"
+            :key="city.id"
+            :city="city"
+            :selected="selectedCityInfo?.id === city.id"
+            :query="searchQuery.trim()"
+            :display-temp="config.displayTemp(city.temp)"
+            :unit-symbol="config.unitSymbol"
+            detail-label="상세보기 →"
+            :removable="city.isExtra === true"
+            favoritable
+            :favorite="favorite.isFavorite(city.id)"
+            @select-card="selectCity"
+            @click-detail="goToDetail"
+            @toggle-favorite="toggleFavorite"
+            @remove-card="confirmRemove"
+          />
+        </TransitionGroup>
+      </template>
+      <!-- 목록에 없는 도시를 찾았다는 뜻이므로, 여기서 바로 추가로 넘어갈 수 있게 한다.
+           안내만 띄우고 끝내면 사용자가 위로 올라가 '도시 추가'를 다시 눌러야 한다. -->
+      <el-empty v-else-if="!weather.isLoading && !weather.error" :description="emptyText">
+        <el-button type="primary" @click="searchOutside">
+          "{{ searchQuery.trim() }}" 외부에서 찾아 추가하기
+        </el-button>
+      </el-empty>
     </BaseDashboardCard>
   </div>
 </template>
 
 <style scoped>
+/* 선택이 바뀌면 한 번 반짝인다. key가 바뀌면서 요소가 새로 그려지므로 애니메이션이 다시 실행된다. */
+@keyframes selection-flash {
+  0% {
+    background-color: var(--sk-accent);
+    color: var(--sk-text-invert);
+  }
+  100% {
+    background-color: var(--sk-accent-weak);
+  }
+}
+.selection--flash {
+  animation: selection-flash 0.45s ease-out;
+}
+.freshness {
+  font-size: var(--sk-text-xs);
+  color: var(--sk-text-muted);
+}
+/* 묶음 제목. 카드 그리드끼리 붙어 있으면 어디까지가 즐겨찾기인지 알 수 없다. */
+.group-title {
+  margin: 0 0 var(--sk-space-3);
+  font-size: var(--sk-text-sm);
+  font-weight: 700;
+  color: var(--sk-w-sunny);
+}
+.group-title--sub {
+  margin-top: var(--sk-space-6);
+  color: var(--sk-text-muted);
+}
+.fav-count {
+  font-size: var(--sk-text-xs);
+  color: var(--sk-text-muted);
+  font-weight: 600;
+}
+.place__form {
+  width: 100%;
+}
+/* el-form의 오류 메시지는 form-item 아래에 절대 위치로 붙는다.
+   margin-bottom을 0으로 두면 그 자리에 다음 문단이 겹쳐 보이므로, 메시지 높이만큼 자리를 비워둔다. */
+.place__form :deep(.el-form-item) {
+  margin-bottom: var(--sk-space-6);
+}
+.skeleton-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sk-space-3);
+  align-items: center;
+  padding: var(--sk-space-4);
+  border: 1px solid var(--sk-border);
+  border-radius: var(--sk-radius);
+  background-color: var(--sk-surface);
+}
 .tools {
   display: flex;
   gap: var(--sk-space-3);
@@ -458,8 +697,9 @@ const goToDetail = (city) => {
   letter-spacing: -0.02em;
 }
 .selection__status {
-  color: var(--sk-text-muted);
+  color: var(--sk-accent);
   font-size: var(--sk-text-md);
+  font-weight: 600;
 }
 .selection__link {
   margin-left: auto;
@@ -502,5 +742,12 @@ const goToDetail = (city) => {
   border-radius: 8px;
   padding: 12px 14px;
   font-size: 14px;
+}
+/* 좁은 화면에서는 카드 최소 폭을 줄여 2열을 유지한다.
+   150px로 두면 375px 화면에서 1열이 되어 카드 11장이 세로로 길게 늘어선다. */
+@media (max-width: 640px) {
+  .weather-grid {
+    grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+  }
 }
 </style>

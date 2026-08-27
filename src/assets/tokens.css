@@ -124,3 +124,21 @@
 .sk-num {
   font-variant-numeric: tabular-nums;
 }
+
+/* ============================================================================
+ * Element Plus 테마 맞추기 (과제 7)
+ *
+ * 라이브러리 기본 파랑(#409EFF)을 그대로 두면 우리가 정한 색과 두 가지 파랑이 섞인다.
+ * Element Plus는 --el-* 변수로 색을 받으므로, 우리 토큰을 그대로 넘겨준다.
+ * ========================================================================== */
+:root {
+  --el-color-primary: var(--sk-accent);
+  --el-color-primary-light-3: var(--sk-sky-400);
+  --el-color-primary-light-5: var(--sk-sky-300);
+  --el-color-primary-light-7: var(--sk-sky-200);
+  --el-color-primary-light-9: var(--sk-sky-50);
+  --el-color-danger: var(--sk-danger);
+  --el-color-warning: var(--sk-highlight);
+  --el-border-radius-base: var(--sk-radius);
+  --el-font-family: var(--sk-font);
+}

@@ -68,7 +68,17 @@ const statusCounts = computed(() => {
 })
 const topCount = computed(() => statusCounts.value[0]?.count ?? 1)
 
-// 기온 순으로 정렬한 전체 목록. 막대 길이는 최저~최고 구간을 0~100%로 환산한다.
+// 기온 순으로 정렬한 전체 목록.
+//
+// 막대 길이는 "그날의 최저~최고"가 아니라 고정된 기온 범위(-10~40℃)를 기준으로 그린다.
+// 처음에는 최저를 0%, 최고를 100%로 늘려서 그렸는데, 오늘처럼 30~33℃로 좁게 몰린 날에는
+// 1℃ 차이가 막대의 33%가 되어 실제보다 훨씬 큰 차이처럼 보였다.
+// 막대는 0에서 시작하는 그림이라 "몇 배 차이"로 읽히기 때문에, 기준을 고정해야 거짓말을 하지 않는다.
+const SCALE_MIN = -10
+const SCALE_MAX = 40
+
+const toRatio = (temp) => Math.round(((temp - SCALE_MIN) / (SCALE_MAX - SCALE_MIN)) * 100)
+
 const ranked = computed(() =>
   [...CITY_WEATHER.value]
     .sort((a, b) => b.temp - a.temp)
@@ -76,11 +86,7 @@ const ranked = computed(() =>
       ...city,
       icon: statusMeta(city.status).icon,
       color: bandOf(city.temp).color,
-      // 최저 기온 도시는 비율이 0이라 막대가 사라지므로, 그릴 때 최소 6%는 채운다.
-      ratio:
-        maxTemp.value === minTemp.value
-          ? 100
-          : Math.round(((city.temp - minTemp.value) / (maxTemp.value - minTemp.value)) * 100),
+      ratio: Math.min(100, Math.max(0, toRatio(city.temp))),
     })),
 )
 </script>
@@ -133,9 +139,13 @@ const ranked = computed(() =>
       <ul class="bars">
         <li v-for="row in statusCounts" :key="row.status" class="bars__row">
           <span class="bars__name">{{ row.icon }} {{ row.status }}</span>
-          <span class="bars__track">
-            <span class="bars__fill" :style="{ width: `${(row.count / topCount) * 100}%` }" />
-          </span>
+          <!-- 막대를 직접 그리면 폭 계산과 애니메이션을 다 만들어야 한다. el-progress에 비율만 넘긴다. -->
+          <el-progress
+            class="bars__bar"
+            :percentage="Math.round((row.count / topCount) * 100)"
+            :show-text="false"
+            :stroke-width="10"
+          />
           <span class="bars__count sk-num">{{ row.count }}곳</span>
         </li>
       </ul>
@@ -143,6 +153,9 @@ const ranked = computed(() =>
 
     <BaseDashboardCard title="도시별 기온 순위">
       <template #badge>높은 순</template>
+      <template #actions>
+        <span class="scale-note">막대는 {{ SCALE_MIN }}~{{ SCALE_MAX }}℃ 기준</span>
+      </template>
       <ol class="rank">
         <li v-for="(city, index) in ranked" :key="city.id" class="rank__row">
           <span class="rank__no sk-num">{{ index + 1 }}</span>
@@ -150,12 +163,13 @@ const ranked = computed(() =>
           <RouterLink :to="`/weather/${city.id}`" class="rank__name">
             {{ city.name }} {{ city.icon }}
           </RouterLink>
-          <span class="rank__track">
-            <span
-              class="rank__fill"
-              :style="{ width: `${Math.max(6, city.ratio)}%`, backgroundColor: city.color }"
-            />
-          </span>
+          <el-progress
+            class="rank__bar"
+            :percentage="city.ratio"
+            :color="city.color"
+            :show-text="false"
+            :stroke-width="10"
+          />
           <span class="rank__temp sk-num">
             {{ config.displayTemp(city.temp) }}{{ config.unitSymbol }}
           </span>
@@ -173,6 +187,10 @@ const ranked = computed(() =>
 </template>
 
 <style scoped>
+.scale-note {
+  font-size: var(--sk-text-xs);
+  color: var(--sk-text-muted);
+}
 .state {
   margin: 0;
   font-size: var(--sk-text-sm);
@@ -230,6 +248,10 @@ const ranked = computed(() =>
   width: 90px;
   flex-shrink: 0;
   font-weight: 600;
+}
+.bars__bar,
+.rank__bar {
+  flex: 1;
 }
 .bars__track,
 .rank__track {

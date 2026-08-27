@@ -4,12 +4,16 @@
 import { ref, computed, onMounted, defineAsyncComponent } from 'vue'
 import { findCityById, fineDustGrade } from '@/data/weatherData.js'
 import { useWeatherStore } from '@/stores/weatherStore.js'
+import { MAP_LAYERS, DEFAULT_MAP_LAYER } from '@/data/mapLayers.js'
 import { fetchAirPollution, fetchForecast } from '@/api/weatherApi.js'
 import { statusMeta } from '@/data/weatherStatus.js'
 import { useConfigStore } from '@/stores/configStore.js'
 import BaseDashboardCard from '@/components/exercise/BaseDashboardCard.vue'
 // 지도는 Leaflet 라이브러리를 끌고 오므로, 이 화면에 들어올 때만 내려받도록 동적 import를 쓴다.
 // (과제 4에서 라우트에 적용한 지연 로딩을 컴포넌트 단위로도 적용한 것)
+// 지도에 겹칠 레이어. 버튼은 카드 헤더에, 실제 그리기는 WeatherMap이 맡는다.
+const mapLayer = ref(DEFAULT_MAP_LAYER)
+
 const WeatherMap = defineAsyncComponent(() => import('@/components/exercise/WeatherMap.vue'))
 
 // 라우터에서 props: true 로 넘겨준 동적 구간. useRoute() 없이 순수 props로 받는다.
@@ -23,6 +27,7 @@ const weather = useWeatherStore()
 // Mount 시점에 도시 객체를 선택한다. 못 찾으면 null로 두고 아래에서 안내 화면을 보여준다.
 const city = ref(null)
 const isLoading = ref(true)
+const loadError = ref('') // 요청 실패 (도시가 목록에 없는 것과는 다른 상황)
 const airQuality = ref(null) // 과제 6-2) 대기오염 API 결과
 const forecast = ref([]) // 과제 6-2) 5일/3시간 예보 API 결과
 
@@ -41,23 +46,32 @@ onMounted(async () => {
     console.log(`⚠️ [onMounted] 존재하지 않는 도시 코드: ${props.cityId}`)
     return
   }
-  try {
-    city.value = weather.findById(props.cityId) ?? (await weather.loadCity(target))
-    console.log(`📄 [onMounted] 상세 페이지 진입 → ${city.value.name} (${props.cityId})`)
+  // 세 요청을 동시에 보낸다. 좌표는 요청 전에 이미 알고 있으므로 날씨 응답을 기다릴 이유가 없다.
+  //
+  // all이 아니라 allSettled를 쓰는 이유:
+  // all은 하나만 실패해도 전체가 거부된다. 그러면 예보 호출이 잠깐 실패한 것만으로
+  // 도시 정보까지 못 받은 셈이 되어 "도시를 찾을 수 없습니다" 화면이 떠버린다.
+  // 세 값은 서로 독립적이므로 성공한 것만 반영하고, 실패한 칸은 비워두는 편이 맞다.
+  const [cityRes, airRes, forecastRes] = await Promise.allSettled([
+    weather.findById(props.cityId) ?? weather.loadCity(target),
+    fetchAirPollution(target.lat, target.lon),
+    fetchForecast(target.lat, target.lon),
+  ])
 
-    // 대기오염과 예보는 서로 다른 엔드포인트다. 순서대로 기다릴 이유가 없으므로
-    // Promise.all로 동시에 보낸다. (하나씩 await하면 두 배로 기다리게 된다)
-    const [air, hours] = await Promise.all([
-      fetchAirPollution(target.lat, target.lon),
-      fetchForecast(target.lat, target.lon),
-    ])
-    airQuality.value = air
-    forecast.value = hours
-  } catch (error) {
-    console.error('[상세] 날씨 조회 실패:', error.message)
-  } finally {
-    isLoading.value = false
+  if (cityRes.status === 'fulfilled') {
+    city.value = cityRes.value
+    console.log(`📄 [onMounted] 상세 페이지 진입 → ${city.value.name} (${props.cityId})`)
+  } else {
+    // 도시는 목록에 있는데 값을 못 받아온 경우. "도시가 없다"와는 다른 상황이라 따로 안내한다.
+    loadError.value = '날씨 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.'
+    console.error('[상세] 날씨 조회 실패:', cityRes.reason?.message)
   }
+  if (airRes.status === 'fulfilled') airQuality.value = airRes.value
+  else console.error('[상세] 대기오염 조회 실패:', airRes.reason?.message)
+  if (forecastRes.status === 'fulfilled') forecast.value = forecastRes.value
+  else console.error('[상세] 예보 조회 실패:', forecastRes.reason?.message)
+
+  isLoading.value = false
 })
 
 const meta = computed(() => (city.value ? statusMeta(city.value.status) : null))
@@ -96,6 +110,10 @@ const observedText = computed(() => {
   return `${at.toLocaleString('ko-KR', { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })} 기준`
 })
 
+// 미세먼지 등급을 Element Plus의 태그 색으로 옮긴다.
+// 좋음/보통/나쁨을 글자로만 쓰면 훑어볼 때 눈에 안 들어와서, 색이 붙은 태그로 보여준다.
+const DUST_TAG_TYPE = { good: 'success', normal: 'info', bad: 'warning', worst: 'danger' }
+
 const dust = computed(() => (airQuality.value ? fineDustGrade(airQuality.value.pm10) : null))
 
 // 관측 항목을 배열로 두면 마크업이 v-for 한 줄로 끝나고, 항목을 추가하기도 쉽다.
@@ -126,12 +144,13 @@ const observationRows = computed(() => {
     },
     {
       label: '미세먼지 (PM10)',
-      value: airQuality.value ? `${airQuality.value.pm10} ㎍/㎥` : '불러오는 중',
-      hint: dust.value?.label ?? '대기오염 API 조회 중',
+      value: airQuality.value ? `${airQuality.value.pm10} ㎍/㎥` : null,
+      hint: '대기오염 API 실측값',
+      tag: dust.value ? { text: dust.value.label, type: DUST_TAG_TYPE[dust.value.tone] } : null,
     },
     {
       label: '초미세먼지 (PM2.5)',
-      value: airQuality.value ? `${airQuality.value.pm25} ㎍/㎥` : '불러오는 중',
+      value: airQuality.value ? `${airQuality.value.pm25} ㎍/㎥` : null,
       hint: '대기오염 API 실측값',
     },
     {
@@ -144,7 +163,15 @@ const observationRows = computed(() => {
 </script>
 
 <template>
-  <div v-if="city">
+  <!-- 불러오는 동안 보여줄 화면.
+       이 분기가 없으면 city가 채워지기 전까지 아래 "도시를 찾을 수 없습니다"가 먼저 뜬다.
+       (요청이 실패한 것이 아니라 아직 안 온 것인데, 화면은 없는 것처럼 말하고 있었다) -->
+  <div v-if="isLoading" class="loading">
+    <el-skeleton :rows="3" animated />
+    <el-skeleton style="margin-top: 24px" :rows="5" animated />
+  </div>
+
+  <div v-else-if="city">
     <BaseDashboardCard>
       <div class="detail-head">
         <div>
@@ -163,15 +190,33 @@ const observationRows = computed(() => {
       <dl class="obs">
         <div v-for="row in observationRows" :key="row.label" class="obs__row">
           <dt class="obs__label">{{ row.label }}</dt>
-          <dd class="obs__value sk-num">{{ row.value }}</dd>
-          <dd class="obs__hint">{{ row.hint }}</dd>
+          <dd class="obs__value sk-num">
+            <!-- 아직 응답이 안 온 값은 "불러오는 중" 글자 대신 자리만 잡아둔다. -->
+            <el-skeleton-item v-if="row.value === null" variant="h1" style="width: 70%" />
+            <span v-else>{{ row.value }}</span>
+          </dd>
+          <dd class="obs__hint">
+            <el-tag v-if="row.tag" :type="row.tag.type" size="small" effect="light">
+              {{ row.tag.text }}
+            </el-tag>
+            <span v-else>{{ row.hint }}</span>
+          </dd>
         </div>
       </dl>
     </BaseDashboardCard>
 
     <BaseDashboardCard title="지도">
-      <template #badge>OpenStreetMap + 날씨 레이어</template>
-      <WeatherMap :lat="city.lat" :lon="city.lon" :name="city.name" />
+      <template #badge>OpenStreetMap</template>
+      <!-- 레이어 선택은 지도 안이 아니라 카드 헤더 오른쪽에 둔다.
+           지도 위에 작게 얹으면 눌러야 할 것인지 알기 어렵고, 지도를 끌 때 방해가 된다. -->
+      <template #actions>
+        <el-radio-group v-model="mapLayer">
+          <el-radio-button v-for="layer in MAP_LAYERS" :key="layer.key" :value="layer.key">
+            {{ layer.label }}
+          </el-radio-button>
+        </el-radio-group>
+      </template>
+      <WeatherMap :lat="city.lat" :lon="city.lon" :name="city.name" :layer="mapLayer" />
     </BaseDashboardCard>
 
     <BaseDashboardCard v-if="nextHours.length > 0" title="앞으로 24시간">
@@ -201,16 +246,25 @@ const observationRows = computed(() => {
   </div>
 
   <!-- 주소는 규칙에 맞지만(/weather/xxx) 그런 도시가 없는 경우: 404가 아니라 이 화면이 안내한다. -->
-  <BaseDashboardCard v-else title="도시를 찾을 수 없습니다">
-    <p class="empty">
-      <code>{{ cityId }}</code> 에 해당하는 도시가 목록에 없습니다. 주소를 확인하거나 대시보드에서
-      다시 선택해 주세요.
-    </p>
-    <RouterLink to="/" class="btn btn--primary">메인 대시보드로 돌아가기</RouterLink>
+  <BaseDashboardCard v-else>
+    <el-result
+      icon="warning"
+      title="도시를 찾을 수 없습니다"
+      :sub-title="`${cityId} 에 해당하는 도시가 목록에 없습니다.`"
+    >
+      <template #extra>
+        <RouterLink to="/">
+          <el-button type="primary">메인 대시보드로 돌아가기</el-button>
+        </RouterLink>
+      </template>
+    </el-result>
   </BaseDashboardCard>
 </template>
 
 <style scoped>
+.loading {
+  padding: var(--sk-space-4) 0;
+}
 .forecast {
   list-style: none;
   margin: 0;
