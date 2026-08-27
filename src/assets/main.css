@@ -51,13 +51,20 @@ a,
   margin: 0.4rem 0;
 }
 
-/* 1~3일차 실습의 맨 <button>에 최소한의 모양을 입힌다.
-   :not(.el-button)이 필요한 이유 — 4일차 실습은 Element Plus 버튼을 쓰는데,
-   `.practice-section button`(0,1,1)이 `.el-button`(0,1,0)보다 특정도가 높아서
-   배경만 이 규칙으로 덮이고 글자색은 라이브러리의 흰색이 남는다.
-   그러면 흰 글자에 연회색 배경이 되어 글씨가 보이지 않는다.
-   라이브러리가 스스로 칠하는 버튼은 건드리지 않는 것이 맞다. */
-.practice-section button:not(.el-button) {
+/* 실습 화면의 맨 <button>에 최소한의 모양을 입힌다. 어디까지나 '기본값'이므로
+   자기 색을 가진 버튼은 무엇이든 이 규칙을 이겨야 한다.
+
+   `.practice-section`을 :where()로 감싸 특정도를 (0,1,1)에서 (0,0,1)로 낮춘 이유:
+   원래대로면 이 규칙이 클래스 하나짜리 버튼 스타일(0,1,0)을 이긴다. 그런데 이 규칙은
+   background-color만 정하고 color는 안 정하므로, 이길 때마다 '배경은 우리 연회색,
+   글자는 저쪽 흰색'이 되어 글씨가 사라진다. 실제로 그렇게 깨져 있던 것이
+   4일차의 .el-button, 2일차의 .btn-external 이었다.
+
+   예외를 :not()으로 하나씩 빼는 방법도 있지만, :not()은 인자의 특정도를 그대로 가져가서
+   규칙이 오히려 더 무거워진다. (한 번 그렇게 고쳤다가 과제 1의
+   .weather-card__btn--detail(0,2,0)까지 이겨버려 같은 증상을 새로 만들었다.)
+   요소 선택자만 남기면 클래스가 붙은 버튼은 전부 알아서 이기므로 예외 목록이 필요 없다. */
+:where(.practice-section) button {
   margin: 0.3rem 0.3rem 0.3rem 0;
   padding: 0.4rem 0.8rem;
   border: 1px solid var(--sk-border-strong);
@@ -66,7 +73,7 @@ a,
   cursor: pointer;
 }
 
-.practice-section button:not(.el-button):hover {
+:where(.practice-section) button:hover {
   background-color: var(--sk-surface-hover);
 }
 
