@@ -6,9 +6,14 @@ import axios from 'axios'
 
 const API_KEY = import.meta.env.VITE_OPENWEATHER_KEY
 
+// 서버 주소도 소스에 박아두지 않고 빌드 모드(.env.staging / .env.production)에서 받는다.
+// 검증용 서버와 상용 서버가 갈리면 코드를 고치는 게 아니라 빌드 명령만 바꾸면 된다.
+// 다만 개발 중에는 .env 에 이 값이 없을 수 있으므로, 없으면 기존 주소를 그대로 쓴다.
+const BASE_URL = import.meta.env.VITE_API_URL || 'https://api.openweathermap.org'
+
 // axios 인스턴스: 매 호출마다 반복되는 baseURL과 공통 파라미터를 미리 박아둔다.
 const owm = axios.create({
-  baseURL: 'https://api.openweathermap.org',
+  baseURL: BASE_URL,
   timeout: 8000,
   params: { appid: API_KEY, units: 'metric', lang: 'kr' },
 })

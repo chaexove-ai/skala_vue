@@ -24,7 +24,9 @@ watch([lastName, firstName], ([newLast, newFirst], [oldLast, oldFirst]) => {
     <div class="monitor">
       <h3>👁️‍🗨️ 배열로 묶은 감시자 모니터링</h3>
       <p>{{ logMessage }}</p>
-      <small style="color: gray">성, 이름 둘 중 하나만 바뀌어도 watch([lastName, firstName], ...) 하나가 반응합니다.</small>
+      <small style="color: gray"
+        >성, 이름 둘 중 하나만 바뀌어도 watch([lastName, firstName], ...) 하나가 반응합니다.</small
+      >
     </div>
   </div>
 </template>

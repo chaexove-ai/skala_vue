@@ -116,11 +116,11 @@ import ElementPlus from '@/components/practices/library/ElementPlus.vue'
     <SlotNamedParent />
     <hr />
     <SlotScopedParent />
-  <hr />
-  <AxiosWeather />
-  <hr />
-  <AxiosJson />
-  <hr />
-  <ElementPlus />
+    <hr />
+    <AxiosWeather />
+    <hr />
+    <AxiosJson />
+    <hr />
+    <ElementPlus />
   </div>
 </template>

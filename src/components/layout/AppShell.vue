@@ -3,8 +3,8 @@
 // 화면마다 이 구조를 반복해서 짜지 않도록 껍데기만 여기서 책임지고, 내용은 slot으로 받는다.
 //
 // slot 구성
-//   #nav     : 화면 전환 메뉴 (지금은 탭 버튼, 과제 4에서 <RouterLink>로 교체 예정)
-//   #actions : 헤더 우측 액션 영역 (과제 5의 ℃/℉ 단위 토글이 들어갈 자리)
+//   #nav     : 화면 전환 메뉴 (<RouterLink> 목록)
+//   #actions : 헤더 우측 액션 영역 (℃/℉ 단위 토글)
 //   기본     : 본문
 import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
@@ -26,6 +26,12 @@ const config = useConfigStore()
 
 // 사이트를 열면 브라우저에 현재 위치를 물어본다. 거절해도 화면은 그대로 동작한다.
 onMounted(() => weather.detectMyLocation())
+
+// 어떤 빌드가 지금 떠 있는지. 배포한 뒤 "이게 방금 올린 그 빌드가 맞나"를 확인할 방법이 없으면
+// 캐시된 옛 화면을 보면서 고쳐지지 않았다고 착각하게 된다. 푸터에 한 칸 내어 적어둔다.
+// VITE_APP_MODE는 .env.staging / .env.production 에서 오고, 없으면 Vite 기본값(MODE)을 쓴다.
+const buildMode = import.meta.env.VITE_APP_MODE || import.meta.env.MODE
+console.log(`[빌드] 모드=${buildMode} · API=${import.meta.env.VITE_API_URL ?? '(기본값)'}`)
 
 // 히어로에 띄울 곳: 현재 위치를 알아냈으면 그곳, 아니면 고른 도시, 그것도 없으면 목록의 첫 도시.
 // 접속한 사람이 지금 서 있는 자리의 날씨를 먼저 보여주는 것이 자연스럽다고 봤다.
@@ -116,7 +122,7 @@ const timeOfDay = computed(() => {
     <footer class="shell__foot">
       <div class="shell__inner shell__foot-inner">
         <span>SKALA Vue.js 실습 과제 — 판교_5반_임채환</span>
-        <span class="shell__foot-dim">Vue 3 · Vue Router · Vite</span>
+        <span class="shell__foot-dim">Vue 3 · Vue Router · Pinia · Vite · {{ buildMode }}</span>
       </div>
     </footer>
   </div>

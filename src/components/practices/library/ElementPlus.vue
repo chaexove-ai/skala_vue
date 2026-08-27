@@ -75,11 +75,19 @@ const startDownload = () => {
       <div class="card-body">
         <div class="input-group">
           <span>이메일 주소:</span>
-          <el-input v-model="userForm.email" placeholder="example@email.com" clearable style="width: 300px" />
+          <el-input
+            v-model="userForm.email"
+            placeholder="example@email.com"
+            clearable
+            style="width: 300px"
+          />
         </div>
 
         <div class="input-group">
-          <el-switch v-model="userForm.agree" active-text="개인정보 수집 및 필수 이용약관에 동의합니다." />
+          <el-switch
+            v-model="userForm.agree"
+            active-text="개인정보 수집 및 필수 이용약관에 동의합니다."
+          />
         </div>
 
         <el-button type="success" @click="handleRegister">🚀 회원가입하기</el-button>
@@ -100,7 +108,10 @@ const startDownload = () => {
           <el-rate v-model="productRate" show-score score-template="{value} 점" />
         </div>
 
-        <div class="result-preview">🟢 <strong>실시간 장부 요약:</strong> 선택 수량 {{ productQuantity }}개 / 내가 준 점수 {{ productRate }}점</div>
+        <div class="result-preview">
+          🟢 <strong>실시간 장부 요약:</strong> 선택 수량 {{ productQuantity }}개 / 내가 준 점수
+          {{ productRate }}점
+        </div>
       </div>
     </el-card>
 
@@ -116,7 +127,10 @@ const startDownload = () => {
         </div>
 
         <div class="progress-zone">
-          <el-progress :percentage="downloadProgress" :status="downloadProgress === 100 ? 'success' : ''" />
+          <el-progress
+            :percentage="downloadProgress"
+            :status="downloadProgress === 100 ? 'success' : ''"
+          />
         </div>
       </div>
     </el-card>

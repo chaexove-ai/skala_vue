@@ -9,7 +9,10 @@ import SlotNamedChild from './SlotNamedChild.vue'
       <template v-slot:header>
         <h3>Child 주입 제목</h3>
       </template>
-      <p>"Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt..."</p>
+      <p>
+        "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor
+        incididunt..."
+      </p>
     </SlotNamedChild>
   </div>
 </template>

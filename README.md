@@ -29,13 +29,24 @@ npm install
 npm run dev
 ```
 
-실행 후 `http://localhost:5173` 접속. 프로덕션 빌드는 `npm run build`입니다.
+실행 후 `http://localhost:5173` 접속.
 
-4일차 실습에서 외부 날씨 API를 호출하므로, 프로젝트 루트에 `.env` 파일을 만들고 본인 키를 넣어야 합니다. (`.env.example` 참고, `.env`는 저장소에 올라가지 않습니다)
+4일차 실습부터 외부 날씨 API를 호출하므로, 프로젝트 루트에 `.env` 파일을 만들고 본인 키를 넣어야 합니다. (`.env.example` 참고, `.env`는 저장소에 올라가지 않습니다)
 
 ```
 VITE_OPENWEATHER_KEY=본인_OpenWeatherMap_API_키
 ```
+
+### 그 밖의 명령어
+
+| 명령어                     | 하는 일                                         |
+| -------------------------- | ----------------------------------------------- |
+| `npm run lint`             | oxlint + ESLint 일괄 점검 (`--fix` 포함)        |
+| `npm run format`           | Prettier로 `src/` 전체 서식 통일                |
+| `npm run build`            | 프로덕션 빌드 → `dist/`                         |
+| `npm run build:staging`    | `.env.staging`을 읽어 검증용 빌드               |
+| `npm run build:production` | `.env.production`을 읽어 상용 빌드              |
+| `npm run preview`          | 빌드된 `dist/`를 로컬에서 정적 서버로 띄워 확인 |
 
 ## 화면 구성
 
@@ -106,6 +117,9 @@ src/
 | [과제 3](#과제-3-weather-component-핸즈-온)   | Weather Component — 컴포넌트 분리                        |
 | [과제 4](#과제-4-weather-router-핸즈-온)      | Weather Router — 화면을 주소로 분리                      |
 | [과제 5](#과제-5-weather-store-핸즈-온)       | Weather Store — Pinia로 단위 설정 공유                   |
+| [과제 6](#과제-6-weather-axios-핸즈-온)       | Weather Axios — 실제 날씨 API 연동                       |
+| [과제 7](#과제-7-weather-ui-library-핸즈-온)  | Weather UI Library — Element Plus 적용                   |
+| [과제 8](#과제-8-weather-deployment-핸즈-온)  | Weather Deployment — 코드 품질·환경 변수·빌드·배포       |
 | [공통](#공통-디자인-시스템과-앱-셸)           | 디자인 시스템과 앱 셸                                    |
 
 ---
@@ -665,7 +679,15 @@ Mock Data를 걷어내고 실제 날씨 API를 붙이는 실습입니다. 과제
 
 ### 개인별 Customization
 
-- **주문형(on-demand) 로딩**: `app.use(ElementPlus)`로 통째로 등록하면 쓰지도 않는 컴포넌트와 CSS까지 번들에 들어갑니다. `unplugin-auto-import` + `unplugin-vue-components`로 **실제로 쓴 것만** import되도록 설정했습니다. 첫 화면 번들이 178KB → 218KB로 늘었는데, 통째로 등록했다면 400KB를 넘었을 것입니다.
+- **주문형(on-demand) 로딩**: `app.use(ElementPlus)`로 통째로 등록하면 쓰지도 않는 컴포넌트와 CSS까지 번들에 들어갑니다. `unplugin-auto-import` + `unplugin-vue-components`로 **실제로 쓴 것만** import되도록 설정했습니다. 처음에는 "통째로 등록하면 400KB쯤 되겠지"라고 어림잡아 적어뒀는데, 확인해보니 짐작보다 훨씬 컸습니다. `main.js`를 `app.use(ElementPlus)` + 전체 CSS import로 잠깐 바꿔서 실제로 재봤습니다.
+
+| 방식                                 | 첫 화면 JS + CSS |
+| ------------------------------------ | ---------------- |
+| 주문형 (지금)                        | **194 KB**       |
+| `app.use(ElementPlus)` — 통째로 등록 | **1,436 KB**     |
+
+**7.4배**입니다. 이 앱이 쓰는 Element Plus 컴포넌트는 열 개 남짓인데, 통째로 등록하면 안 쓰는 200개 넘는 컴포넌트와 그 CSS 전부가 첫 화면에 실립니다. 설정 두 줄로 갈리는 차이라, 어림짐작으로 적어두지 않고 재보길 잘했습니다.
+
 - **테마를 우리 토큰에 맞춤**: Element Plus 기본 파랑(`#409EFF`)을 그대로 두면 파랑이 두 종류가 됩니다. `--el-color-primary` 같은 변수에 우리 `--sk-*` 토큰을 넘겨서 기존 화면과 섞이게 했습니다.
 - **입력 검증 (`el-form`)**: 도시 추가 입력창에 네 가지 규칙을 걸었습니다 — 필수, 두 글자 이상, 30자 이하, 한글·영문만. 특히 마지막 규칙은 실용적인 이유가 있습니다. `123!!` 같은 값을 지오코딩에 보내면 응답은 200으로 오지만 쓸모없는 결과만 나옵니다. **애초에 보내지 않는 것이 맞습니다.** 검증을 통과해야만 요청이 나갑니다.
 - **즐겨찾기 (`favoriteStore`)**: 과제 1에서 만들었던 별표를 되살렸습니다. 그때는 화면 안에서만 살아 있는 값이었지만, 이제 스토어와 `localStorage`가 있으니 화면을 옮기거나 새로고침해도 남습니다. 도시 객체가 아니라 **id만 저장**합니다 — 날씨는 매번 새로 받으므로 객체를 넣어두면 옛 기온이 남습니다. 목록에서 사라진 도시는 `prune()`으로 즐겨찾기에서도 정리합니다.
@@ -689,6 +711,155 @@ UI 라이브러리를 붙이는 과정에서 오히려 **직접 판단해야 하
 
 ---
 
+## 과제 8: Weather Deployment 핸즈 온
+
+지금까지 만든 것을 **남에게 넘길 수 있는 상태**로 만드는 회차입니다. 코드 품질 도구로 훑고, 소스에 박혀 있던 설정값을 환경 변수로 빼고, 빌드해서 배포합니다.
+
+### ESLint — 에러 8개가 있었습니다
+
+`npm run lint`를 돌리자 `no-undef` 에러가 8개 나왔습니다. 전부 같은 원인이었습니다.
+
+```
+src/views/WeatherHomeView.vue
+  51:23  error  'ElMessage' is not defined  no-undef
+  ...
+```
+
+과제 7에서 Element Plus를 주문형으로 붙이면서 `unplugin-auto-import`가 `ElMessage`의 `import` 구문을 **빌드할 때 넣어주도록** 했습니다. 그래서 소스에는 `import`가 없습니다. 빌드는 멀쩡히 되지만, **ESLint는 빌드를 거치지 않고 소스만 읽으므로** 선언된 적 없는 변수로 봅니다.
+
+빌드 산출물에는 실제로 들어오는 값이니 전역으로 인정해주는 것이 맞습니다.
+
+```js
+globals: {
+  ...globals.browser,
+  ElMessage: 'readonly',
+  ElMessageBox: 'readonly',
+},
+```
+
+`readonly`로 둔 이유가 있습니다. 우리가 저 이름에 값을 덮어쓰는 일은 정상적인 코드에서 일어나지 않으므로, 그때는 오히려 에러를 내는 편이 낫습니다.
+
+플러그인이 globals 목록을 파일로 뽑아주는 옵션도 있지만, 그러면 **한 번 빌드해야 lint가 통과하는 상태**가 됩니다. 저장소를 새로 받은 사람이 `npm run lint`부터 돌리면 실패합니다. 지금 자동 임포트되는 것은 이 둘뿐이라 직접 적었습니다.
+
+### ESLint Custom Rules
+
+```js
+{
+  name: 'app/custom-rules',
+  rules: {
+    eqeqeq: ['error', 'always'],
+    'no-console': 'off',
+    'no-unused-vars': 'warn',
+    'vue/multi-word-component-names': 'off',
+  },
+},
+```
+
+배열은 뒤에 올수록 앞 설정을 덮어쓰므로 `skipFormatting` 바로 앞에 뒀습니다.
+
+- **`eqeqeq`** — 이 앱은 API가 준 숫자와 화면에서 만든 문자열이 섞이는 곳이라 실질적으로 필요합니다. `==`는 타입이 다르면 몰래 변환해서 비교하기 때문에 `'20' == 20`이 `true`가 됩니다.
+- **`no-console: off`** — 이 저장소에서 `console.log`는 디버깅 찌꺼기가 아니라 **무엇이 언제 실행되는지 보여주는 장치**입니다. `watch`/`watchEffect`가 언제 도는지, 카드가 언제 생기고 사라지는지(`onMounted`/`onUnmounted`)를 콘솔에서 확인하는 것이 그날의 학습 내용이었습니다.
+- **`no-unused-vars: warn`** — 안 쓰는 변수는 지우는 게 맞지만, 에러로 막으면 작업 중간에 저장을 못 합니다.
+
+검출도 확인했습니다. 컴포넌트에 `if (userAge == 20)`을 일부러 넣자 바로 잡혔습니다.
+
+```
+47:13  error  Expected '===' and instead saw '=='  eqeqeq
+```
+
+**최종 결과: `npm run lint` — 0 errors, 0 warnings.**
+
+### Prettier — 백틱은 바뀌지 않았습니다
+
+슬라이드의 미션 코드를 그대로 넣고 `npm run format`을 돌렸습니다.
+
+```js
+// 전
+const myRegion = `Suwon`
+const regionGreeting = `웰컴투${myRegion}`
+
+// 후
+const myRegion = `Suwon`
+const regionGreeting = `웰컴투${myRegion}`
+```
+
+공백과 세미콜론은 정리됐는데 **백틱은 그대로였습니다.** `singleQuote: true`가 걸려 있는데도 그렇습니다.
+
+Prettier가 따옴표를 통일하는 것은 `'문자열'`과 `"문자열"` 사이의 이야기고, 백틱은 따옴표의 한 종류가 아니라 **템플릿 리터럴이라는 다른 문법**이기 때문입니다. 바꾸면 서식이 아니라 코드를 고치는 셈이 됩니다. 실제로 아랫줄의 백틱은 `${}` 때문에 필수라 바꾸면 동작이 깨집니다. 서식 도구가 어디까지 손대고 어디서 멈추는지 경계가 분명한 지점이었습니다.
+
+### 환경 변수 — 더미 대신 실제로 쓰는 값으로
+
+슬라이드는 `VITE_API_URL=https://api-stage.skcc.com` 같은 예시를 주는데, 이 앱에는 그런 서버가 없습니다. 그대로 넣으면 **아무 데서도 안 읽는 값**이 하나 생길 뿐입니다.
+
+마침 `weatherApi.js`에 주소가 박혀 있었습니다. 그 자리를 환경 변수로 바꿨습니다.
+
+```js
+// 전
+baseURL: 'https://api.openweathermap.org'
+
+// 후
+const BASE_URL = import.meta.env.VITE_API_URL || 'https://api.openweathermap.org'
+```
+
+`||` 기본값을 둔 것은, 개발용 `.env`에 이 값이 없어도 지금까지처럼 그냥 돌아가게 하기 위해서입니다.
+
+`.env.staging` / `.env.production` 두 파일에는 `VITE_API_URL`과 `VITE_APP_MODE`를 넣었고, 빌드 스크립트를 나눴습니다.
+
+```json
+"build:staging": "vite build --mode staging",
+"build:production": "vite build --mode production"
+```
+
+실행하면 어떤 환경 파일을 읽는지 터미널에 그대로 찍힙니다.
+
+```
+> vite build --mode staging
+vite v8.2.2 building client environment for staging...
+```
+
+**`.gitignore`가 중요합니다.** `.env*`를 통째로 막아두면 새로 만든 두 파일도 같이 막힙니다. 그렇다고 규칙을 느슨하게 풀면 키가 든 `.env`가 새어 나갈 길이 생깁니다. 기본은 전부 막고, 비밀 값이 없는 셋만 예외로 뚫었습니다.
+
+```
+.env
+.env.*
+!.env.example
+!.env.staging
+!.env.production
+```
+
+`VITE_APP_MODE`는 푸터에 표시합니다. 배포하고 나면 **지금 보고 있는 게 방금 올린 그 빌드인지** 확인할 방법이 없어서, 캐시된 옛 화면을 보며 안 고쳐졌다고 착각하기 쉽습니다.
+
+```
+Vue 3 · Vue Router · Pinia · Vite · Production
+```
+
+### 빌드
+
+```
+dist/index.html                    0.98 kB │ gzip:  0.41 kB
+dist/assets/index-*.css           54.17 kB │ gzip:  9.44 kB
+dist/assets/index-*.js           144.70 kB │ gzip: 52.13 kB
+dist/assets/WeatherMap-*.js      150.10 kB │ gzip: 44.19 kB
+```
+
+지도(Leaflet)가 별도 파일로 떨어져 있습니다. 과제 4에서 라우터에 지연 로딩을 걸어둔 결과로, 상세 페이지에 들어가기 전까지는 저 150KB를 받지 않습니다. 첫 화면에서 가장 무거운 덩어리가 첫 화면에 안 실리는 셈입니다.
+
+파일명 뒤의 해시(`index-nHVpdV9v.js`)는 내용이 바뀌면 같이 바뀝니다. 브라우저가 옛 파일을 캐시해두고 새 화면을 안 보여주는 문제를 막는 표준 방식입니다.
+
+### API 키는 숨겨지지 않습니다
+
+과제 조건이 "API 키는 환경 변수로 조정하고 Git에 업로드되지 않도록"이라 그대로 지켰습니다. `.env`는 `.gitignore`에 있고, 히스토리 전체를 뒤져도 키가 나오지 않습니다.
+
+다만 **빌드 산출물에는 키가 그대로 들어갑니다.** 확인해보면 `dist/assets/index-*.js` 안에 32자리 키가 평문으로 박혀 있습니다.
+
+당연한 결과입니다. `VITE_` 변수는 빌드할 때 **문자열로 치환**되고, 브라우저가 OpenWeatherMap을 직접 부르려면 그 키를 갖고 있어야 합니다. 환경 변수는 **키를 저장소에서 빼는** 도구지 브라우저에서 숨기는 도구가 아닙니다.
+
+진짜로 숨기려면 서버를 하나 두고 브라우저 → 내 서버 → OpenWeatherMap으로 중계해야 합니다. 프론트엔드만으로는 방법이 없습니다. 그래서 실무에서는 **공개돼도 피해가 적은 키**(호출 도메인 제한, 무료 등급, 주기적 교체)를 쓰는 쪽으로 갑니다. `dist/`를 `.gitignore`에 넣어둔 것도 같은 이유입니다.
+
+느낀점: (작성 예정)
+
+---
+
 ## 공통: 디자인 시스템과 앱 셸
 
 과제 4(라우터)부터 화면이 여러 개로 늘어나기 때문에, 화면을 하나씩 예쁘게 칠하는 대신 토큰과 셸을 먼저 잡았습니다. 원래 디자인이 전공이기 때문에 저만의 차별화 점이라는 맥락에서 추가하였습니다.
@@ -696,5 +867,5 @@ UI 라이브러리를 붙이는 과정에서 오히려 **직접 판단해야 하
 - **디자인 토큰 (`src/assets/tokens.css`)**: 색·타이포·간격·모서리·그림자를 CSS 변수로 한 곳에 모았습니다. 컴포넌트는 `var(--sk-...)`만 참조하므로, 톤을 바꾸려면 이 파일 하나만 고치면 됩니다. 정리 전에는 `#42b883`(Vue 기본 초록)이 11곳, `#1568b8`(파랑)이 9곳에 복붙되어 있어서 브랜드 색이 무엇인지 불분명했습니다.
 - **2층 구조**: 헤더·히어로는 **시간대에 따라 바뀌는 하늘 그라데이션**(새벽/한낮/해질녘/밤)으로 날씨 앱다운 분위기를 주고, 본문 카드는 항상 **중립 회색 서피스**로 고정했습니다. 감성은 위층에, 데이터는 아래층에 두어 정보가 늘어나도 읽기 부담이 없도록 한 선택입니다.
 - **색의 역할 분리**: 선택된 카드는 파랑(브랜드색), 검색어와 일치한 카드는 앰버로 구분했습니다. 원래는 둘 다 초록이라 "선택된 것"과 "검색에 걸린 것"이 같은 색이었습니다.
-- **앱 셸 (`src/components/layout/AppShell.vue`)**: 브랜드·내비게이션·히어로·본문·푸터 골격을 컴포넌트로 분리하고 `#nav` / `#actions` 슬롯을 열어뒀습니다. 과제 4에서는 `#nav`의 탭 버튼을 `<RouterLink>`로 바꾸고, 과제 5의 ℃/℉ 단위 토글은 `#actions`에 넣을 수 있습니다.
+- **앱 셸 (`src/components/layout/AppShell.vue`)**: 브랜드·내비게이션·히어로·본문·푸터 골격을 컴포넌트로 분리하고 `#nav` / `#actions` 슬롯을 열어뒀습니다. 먼저 만들어 둔 덕에 과제 4에서는 `#nav`의 탭 버튼을 `<RouterLink>`로 갈아끼우고, 과제 5의 ℃/℉ 토글은 `#actions`에 꽂는 것으로 끝났습니다. 셸 자체는 두 번 다 손대지 않았습니다.
 - 숫자(온도)에는 `font-variant-numeric: tabular-nums`를 적용해서, 값이 바뀌어도 카드 폭이 흔들리지 않게 했습니다.

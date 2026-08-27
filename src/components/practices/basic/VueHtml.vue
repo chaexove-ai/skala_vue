@@ -1,5 +1,6 @@
 <script setup>
-const rawHtmlData = '이 글자는 <span style="color: red; font-weight: bold;">빨간색 굵은 글자</span>이다.'
+const rawHtmlData =
+  '이 글자는 <span style="color: red; font-weight: bold;">빨간색 굵은 글자</span>이다.'
 </script>
 
 <template>

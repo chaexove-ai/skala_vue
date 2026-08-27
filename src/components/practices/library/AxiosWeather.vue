@@ -8,8 +8,8 @@ const isLoading = ref(false)
 const handleFetchWeather = async () => {
   isLoading.value = true
 
-  // 수업 예제에서는 키를 코드에 직접 적었지만(const API_KEY = '8964edc...'),
-  // 공개 저장소에 그대로 올라가면 안 되므로 .env 파일로 빼고 여기서는 이름만 참조한다.
+  // 수업 예제에서는 키를 소스에 직접 적었지만, 공개 저장소에 그대로 올라가면 안 되므로
+  // .env 파일로 빼고 여기서는 이름만 참조한다.
   // Vite는 VITE_ 로 시작하는 변수만 클라이언트 코드에 넘겨준다.
   const API_KEY = import.meta.env.VITE_OPENWEATHER_KEY
 
