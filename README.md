@@ -65,6 +65,19 @@ VITE_OPENWEATHER_KEY=본인_OpenWeatherMap_API_키
 
 ## 프로젝트 구조
 
+설정 파일부터. 과제 8에서 손댄 것들이 여기 모여 있습니다.
+
+```
+vite.config.js          # 빌드 설정, @ 별칭, Element Plus 주문형 로딩 플러그인
+eslint.config.js        # 린트 규칙 (eqeqeq · no-console · 자동 임포트 전역 선언)
+.prettierrc.json        # 서식 규칙 (세미콜론 없음 · 홑따옴표)
+vercel.json             # 배포 시 SPA 폴백 (모든 경로 → index.html)
+.env                    # API 키 — 저장소에 올라가지 않음
+.env.example            # .env 를 만들 때 참고할 자리표시자
+.env.staging            # 검증용 빌드 변수 (npm run build:staging)
+.env.production         # 상용 빌드 변수 (npm run build:production)
+```
+
 ```
 src/
 ├── main.js                     # 라우터 인스턴스 전역 주입
@@ -683,10 +696,10 @@ Mock Data를 걷어내고 실제 날씨 API를 붙이는 실습입니다. 과제
 
 | 방식                                 | 첫 화면 JS + CSS |
 | ------------------------------------ | ---------------- |
-| 주문형 (지금)                        | **194 KB**       |
+| 주문형 (지금)                        | **196 KB**       |
 | `app.use(ElementPlus)` — 통째로 등록 | **1,436 KB**     |
 
-**7.4배**입니다. 이 앱이 쓰는 Element Plus 컴포넌트는 열 개 남짓인데, 통째로 등록하면 안 쓰는 200개 넘는 컴포넌트와 그 CSS 전부가 첫 화면에 실립니다. 설정 두 줄로 갈리는 차이라, 어림짐작으로 적어두지 않고 재보길 잘했습니다.
+**7.3배**입니다. 이 앱이 쓰는 Element Plus 컴포넌트는 열 개 남짓인데, 통째로 등록하면 안 쓰는 200개 넘는 컴포넌트와 그 CSS 전부가 첫 화면에 실립니다. 설정 두 줄로 갈리는 차이라, 어림짐작으로 적어두지 않고 재보길 잘했습니다.
 
 - **테마를 우리 토큰에 맞춤**: Element Plus 기본 파랑(`#409EFF`)을 그대로 두면 파랑이 두 종류가 됩니다. `--el-color-primary` 같은 변수에 우리 `--sk-*` 토큰을 넘겨서 기존 화면과 섞이게 했습니다.
 - **입력 검증 (`el-form`)**: 도시 추가 입력창에 네 가지 규칙을 걸었습니다 — 필수, 두 글자 이상, 30자 이하, 한글·영문만. 특히 마지막 규칙은 실용적인 이유가 있습니다. `123!!` 같은 값을 지오코딩에 보내면 응답은 200으로 오지만 쓸모없는 결과만 나옵니다. **애초에 보내지 않는 것이 맞습니다.** 검증을 통과해야만 요청이 나갑니다.
@@ -838,15 +851,15 @@ Vue 3 · Vue Router · Pinia · Vite · Production
 ### 빌드
 
 ```
-dist/index.html                    0.98 kB │ gzip:  0.41 kB
-dist/assets/index-*.css           54.17 kB │ gzip:  9.44 kB
-dist/assets/index-*.js           144.70 kB │ gzip: 52.13 kB
-dist/assets/WeatherMap-*.js      150.10 kB │ gzip: 44.19 kB
+dist/index.html                     0.98 kB │ gzip:  0.41 kB
+dist/assets/index-DhxIp5Wk.css     54.71 kB │ gzip:  9.51 kB
+dist/assets/index-CPWw2sdj.js     145.45 kB │ gzip: 52.32 kB
+dist/assets/WeatherMap-DgC_KuX3.js 150.10 kB │ gzip: 44.19 kB
 ```
 
 지도(Leaflet)가 별도 파일로 떨어져 있습니다. 과제 4에서 라우터에 지연 로딩을 걸어둔 결과로, 상세 페이지에 들어가기 전까지는 저 150KB를 받지 않습니다. 첫 화면에서 가장 무거운 덩어리가 첫 화면에 안 실리는 셈입니다.
 
-파일명 뒤의 해시(`index-nHVpdV9v.js`)는 내용이 바뀌면 같이 바뀝니다. 브라우저가 옛 파일을 캐시해두고 새 화면을 안 보여주는 문제를 막는 표준 방식입니다.
+파일명 뒤의 해시(`index-CPWw2sdj.js`)는 내용이 바뀌면 같이 바뀝니다. 브라우저가 옛 파일을 캐시해두고 새 화면을 안 보여주는 문제를 막는 표준 방식입니다.
 
 ### 배포 — Vercel
 
