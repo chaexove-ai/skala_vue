@@ -7,6 +7,11 @@
 //   #actions : 헤더 우측 액션 영역 (과제 5의 ℃/℉ 단위 토글이 들어갈 자리)
 //   기본     : 본문
 import { computed, ref, onMounted, onUnmounted } from 'vue'
+import { useRoute } from 'vue-router'
+import { useWeatherStore } from '@/stores/weatherStore.js'
+import { useDashboardStore } from '@/stores/dashboardStore.js'
+import { useConfigStore } from '@/stores/configStore.js'
+import { statusMeta } from '@/data/weatherStatus.js'
 
 defineProps({
   title: { type: String, default: '' },
@@ -15,6 +20,21 @@ defineProps({
 
 // 히어로 윗줄에는 지금 시각을 표시한다. 날씨 화면에서 "언제 기준 정보인가"는
 // 실제로 필요한 정보라서, 분이 바뀔 때마다 갱신한다.
+const route = useRoute()
+const weather = useWeatherStore()
+const dashboard = useDashboardStore()
+const config = useConfigStore()
+
+// 사이트를 열면 브라우저에 현재 위치를 물어본다. 거절해도 화면은 그대로 동작한다.
+onMounted(() => weather.detectMyLocation())
+
+// 히어로에 띄울 곳: 현재 위치를 알아냈으면 그곳, 아니면 고른 도시, 그것도 없으면 목록의 첫 도시.
+// 접속한 사람이 지금 서 있는 자리의 날씨를 먼저 보여주는 것이 자연스럽다고 봤다.
+const heroCity = computed(
+  () => weather.myLocation ?? weather.findById(dashboard.selectedCityId) ?? weather.list[0] ?? null,
+)
+const isMyLocation = computed(() => heroCity.value === weather.myLocation)
+
 const now = ref(new Date())
 let clockId = null
 onMounted(() => {
@@ -35,14 +55,24 @@ const stamp = computed(() =>
   }),
 )
 
-// 시간대에 따라 히어로 배경만 바꾼다. (배경색으로 충분히 전달되므로 문구로 또 설명하지 않는다)
+// 히어로 배경. 예전에는 시각을 6/9/17/20시로 임의로 나눴는데,
+// 이제 API가 실제 일출·일몰 시각을 주므로 그 기준으로 낮과 밤을 가른다.
+// (일출 전후 1시간은 새벽, 일몰 전후 1시간은 해질녘)
+const HOUR = 60 * 60
 const timeOfDay = computed(() => {
-  const hour = now.value.getHours()
-  if (hour < 6) return 'night'
-  if (hour < 9) return 'dawn'
-  if (hour < 17) return 'day'
-  if (hour < 20) return 'dusk'
-  return 'night'
+  const o = heroCity.value?.observation
+  const seconds = now.value.getTime() / 1000
+
+  // 아직 데이터를 못 받았으면 예전처럼 시각만 보고 정한다.
+  if (!o?.sunrise) {
+    const hour = now.value.getHours()
+    return hour < 6 || hour >= 20 ? 'night' : hour < 9 ? 'dawn' : hour < 17 ? 'day' : 'dusk'
+  }
+
+  if (seconds < o.sunrise - HOUR || seconds > o.sunset + HOUR) return 'night'
+  if (seconds < o.sunrise + HOUR) return 'dawn'
+  if (seconds > o.sunset - HOUR) return 'dusk'
+  return 'day'
 })
 </script>
 
@@ -66,6 +96,20 @@ const timeOfDay = computed(() => {
         <p class="hero__eyebrow">{{ stamp }} 기준</p>
         <h1 v-if="title" class="hero__title">{{ title }}</h1>
         <p v-if="subtitle" class="hero__subtitle">{{ subtitle }}</p>
+
+        <!-- 지금 보고 있는 도시의 실제 날씨. 제목만 있던 히어로에 살아있는 값을 채운다. -->
+        <div v-if="heroCity && route.meta.showLiveWeather" class="hero__live">
+          <p v-if="isMyLocation" class="hero__badge">📍 현재 위치</p>
+          <div class="hero__row">
+            <span class="hero__city">{{ heroCity.name }}</span>
+            <span class="hero__temp sk-num">
+              {{ config.displayTemp(heroCity.temp) }}{{ config.unitSymbol }}
+            </span>
+            <span class="hero__status">
+              {{ heroCity.status }}{{ statusMeta(heroCity.status).icon }}
+            </span>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -181,6 +225,28 @@ const timeOfDay = computed(() => {
   font-weight: 800;
   letter-spacing: -0.02em;
 }
+.hero__live {
+  margin-top: var(--sk-space-5);
+  padding-top: var(--sk-space-4);
+  border-top: 1px solid rgba(255, 255, 255, 0.28);
+}
+/* '현재 위치'는 아래 줄이 무엇인지 알려주는 꼬리표라, 값보다 작게 위에 둔다. */
+.hero__row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sk-space-4);
+  flex-wrap: wrap;
+}
+.hero__city {
+  font-size: var(--sk-text-lg);
+  font-weight: 800;
+}
+.hero__temp {
+  font-size: var(--sk-text-2xl);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.hero__status,
 .hero__subtitle {
   margin: var(--sk-space-2) 0 0;
   font-size: var(--sk-text-base);

@@ -13,6 +13,8 @@ const routes = [
     meta: {
       title: '지역별 날씨 대시보드',
       subtitle: '도시를 검색하고, 카드를 눌러 상세 관측 정보를 확인하세요.',
+      // 히어로에 현재 위치 날씨를 띄울 화면. 소개·통계·보관함에는 어울리지 않아 이 화면에만 켠다.
+      showLiveWeather: true,
     },
   },
   {
@@ -35,7 +37,10 @@ const routes = [
     name: 'city-detail-query',
     component: () => import('../views/WeatherDetailView.vue'),
     props: (route) => ({ cityId: route.query.cityId ?? '' }),
-    meta: { title: '상세 기상관측 정보', subtitle: '쿼리스트링(?cityId=)으로 도시를 지정한 화면입니다.' },
+    meta: {
+      title: '상세 기상관측 정보',
+      subtitle: '쿼리스트링(?cityId=)으로 도시를 지정한 화면입니다.',
+    },
   },
   {
     path: '/stats',
@@ -43,7 +48,7 @@ const routes = [
     component: () => import('../views/WeatherStatsView.vue'),
     meta: {
       title: '기온 통계',
-      subtitle: '11개 도시의 기온 분포와 날씨 상태 구성을 한눈에 봅니다.',
+      subtitle: '국내 주요 도시의 기온 분포와 날씨 상태 구성을 한눈에 봅니다.',
     },
   },
   {
@@ -63,7 +68,7 @@ const routes = [
     props: true,
     meta: {
       title: '지난 실습 보관함',
-      subtitle: '과제 1~3과 1~3일차 기초 실습 결과물을 그대로 보관합니다.',
+      subtitle: '과제 1~3과 1~4일차 기초 실습 결과물을 당시 모습 그대로 보관합니다.',
     },
   },
   // /archive 로만 들어오면 첫 회차로 보낸다.

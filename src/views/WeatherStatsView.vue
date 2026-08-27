@@ -1,8 +1,8 @@
 <script setup>
 // 과제 4-6) 본인의 추가 view: 도시 전체의 기온 분포와 날씨 상태 구성을 집계해서 보여준다.
 // 새 데이터를 만들지 않고, 대시보드와 같은 Mock Data를 computed로 요약하기만 한다.
-import { computed } from 'vue'
-import { CITY_WEATHER } from '@/data/weatherData.js'
+import { computed, onMounted } from 'vue'
+import { useWeatherStore } from '@/stores/weatherStore.js'
 import { statusMeta } from '@/data/weatherStatus.js'
 import { useConfigStore } from '@/stores/configStore.js'
 import BaseDashboardCard from '@/components/exercise/BaseDashboardCard.vue'
@@ -28,18 +28,29 @@ const bandLabel = (band) => {
 }
 
 const usedBands = computed(() =>
-  TEMP_BANDS.filter((band) => CITY_WEATHER.some((city) => bandOf(city.temp) === band)),
+  TEMP_BANDS.filter((band) => CITY_WEATHER.value.some((city) => bandOf(city.temp) === band)),
 )
 
 const config = useConfigStore()
+const weather = useWeatherStore()
 
-const temps = computed(() => CITY_WEATHER.map((city) => city.temp))
+// 통계 화면으로 바로 들어와도 데이터가 있도록 여기서도 한 번 부른다.
+// 대시보드에서 이미 받아뒀다면 스토어가 건너뛴다.
+onMounted(() => weather.loadAll())
+
+// 통계는 기본 도시(국내 11곳)만 집계한다.
+// 검색으로 추가한 도시까지 섞으면 기준이 달라져서 숫자가 뜻을 잃는다.
+// (예: 남반구 도시를 넣으면 계절이 반대라 최저 기온이 항상 그 도시가 되고, 평균도 의미가 없어진다)
+const CITY_WEATHER = computed(() => weather.list.filter((city) => !city.isExtra))
+const excludedCount = computed(() => weather.list.length - CITY_WEATHER.value.length)
+
+const temps = computed(() => CITY_WEATHER.value.map((city) => city.temp))
 const maxTemp = computed(() => Math.max(...temps.value))
 const minTemp = computed(() => Math.min(...temps.value))
 
 // 최고/최저가 동점인 도시가 있을 수 있으므로 filter로 모두 모은다. (전주·제주가 둘 다 22°)
-const hottest = computed(() => CITY_WEATHER.filter((c) => c.temp === maxTemp.value))
-const coldest = computed(() => CITY_WEATHER.filter((c) => c.temp === minTemp.value))
+const hottest = computed(() => CITY_WEATHER.value.filter((c) => c.temp === maxTemp.value))
+const coldest = computed(() => CITY_WEATHER.value.filter((c) => c.temp === minTemp.value))
 const avgTemp = computed(
   () => Math.round((temps.value.reduce((sum, t) => sum + t, 0) / temps.value.length) * 10) / 10,
 )
@@ -47,7 +58,7 @@ const avgTemp = computed(
 // 날씨 상태별 도시 수. 막대 길이는 가장 많은 상태를 100%로 잡아 상대 비율로 그린다.
 const statusCounts = computed(() => {
   const counts = new Map()
-  for (const city of CITY_WEATHER) counts.set(city.status, (counts.get(city.status) ?? 0) + 1)
+  for (const city of CITY_WEATHER.value) counts.set(city.status, (counts.get(city.status) ?? 0) + 1)
   const rows = [...counts].map(([status, count]) => ({
     status,
     count,
@@ -59,7 +70,7 @@ const topCount = computed(() => statusCounts.value[0]?.count ?? 1)
 
 // 기온 순으로 정렬한 전체 목록. 막대 길이는 최저~최고 구간을 0~100%로 환산한다.
 const ranked = computed(() =>
-  [...CITY_WEATHER]
+  [...CITY_WEATHER.value]
     .sort((a, b) => b.temp - a.temp)
     .map((city) => ({
       ...city,
@@ -77,7 +88,13 @@ const ranked = computed(() =>
 <template>
   <div>
     <BaseDashboardCard title="기온 요약">
-      <template #badge>{{ CITY_WEATHER.length }}개 도시</template>
+      <template #badge>국내 {{ CITY_WEATHER.length }}곳</template>
+      <p v-if="weather.isLoading" class="state">불러오는 중...</p>
+      <p v-else-if="weather.error" class="state state--error">{{ weather.error }}</p>
+      <p v-else-if="excludedCount > 0" class="state">
+        검색으로 추가한 {{ excludedCount }}곳은 집계에서 제외했습니다. 기준이 다른 지역이 섞이면
+        평균과 최고·최저가 뜻을 잃기 때문입니다.
+      </p>
       <div class="summary">
         <div class="summary__item">
           <p class="summary__label">최고</p>
@@ -156,6 +173,14 @@ const ranked = computed(() =>
 </template>
 
 <style scoped>
+.state {
+  margin: 0;
+  font-size: var(--sk-text-sm);
+  color: var(--sk-text-muted);
+}
+.state--error {
+  color: var(--sk-danger);
+}
 .summary {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));

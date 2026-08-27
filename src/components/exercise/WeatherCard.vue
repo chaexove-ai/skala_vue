@@ -22,9 +22,12 @@ const props = defineProps({
   // 과제 5에서 단위 변환이 생겼지만, 이 값을 넘기지 않는 과제 3 화면은 예전 그대로 동작한다.
   displayTemp: { type: Number, default: null },
   unitSymbol: { type: String, default: '°' },
+  // 과제 6) 검색으로 추가한 도시만 카드에서 뺄 수 있게 한다.
+  // 넘기지 않으면 삭제 버튼이 아예 없으므로 과제 3 화면은 그대로다.
+  removable: { type: Boolean, default: false },
   feelsLike: { type: Number, default: null },
 })
-defineEmits(['select-card', 'click-detail'])
+defineEmits(['select-card', 'click-detail', 'remove-card'])
 
 // 날씨 상태별 카드 색상/아이콘: 공통 테이블(weatherStatus.js)에서 찾아 쓴다.
 const meta = computed(() => statusMeta(props.city.status))
@@ -55,6 +58,14 @@ const nameParts = computed(() => {
     :class="[statusClass, { 'weather-card--selected': selected, 'weather-card--matched': query }]"
     @click="$emit('select-card', city)"
   >
+    <button
+      v-if="removable"
+      class="weather-card__remove"
+      title="목록에서 빼기"
+      @click.stop="$emit('remove-card', city)"
+    >
+      ✕
+    </button>
     <p class="weather-card__name">
       <span v-for="(part, i) in nameParts" :key="i" :class="{ 'is-hit': part.hit }">{{
         part.text
@@ -81,6 +92,7 @@ const nameParts = computed(() => {
 <style scoped>
 /* 과제 3-5) 카드 한 장에 해당하는 디자인만 여기에서 관리 */
 .weather-card {
+  position: relative;
   border-radius: 12px;
   padding: 16px 16px 16px 14px;
   min-width: 120px;
@@ -121,6 +133,23 @@ const nameParts = computed(() => {
 }
 .weather-card--default {
   background: linear-gradient(160deg, var(--sk-w-default-bg) 0%, var(--sk-surface) 60%);
+}
+.weather-card__remove {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  border: none;
+  background: none;
+  color: var(--sk-text-muted);
+  font-size: var(--sk-text-xs);
+  line-height: 1;
+  padding: 4px 6px;
+  border-radius: var(--sk-radius-sm);
+  cursor: pointer;
+}
+.weather-card__remove:hover {
+  background-color: var(--sk-danger-weak);
+  color: var(--sk-danger);
 }
 .weather-card__name {
   font-weight: 700;
