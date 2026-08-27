@@ -238,9 +238,11 @@ const goToDetail = (city) => {
           :loading="weather.isLoading"
           circle
           title="날씨 다시 받기"
+          aria-label="날씨 다시 받기"
           @click="refresh"
         >
-          ↻
+          <!-- 기호는 장식이고, 의미는 aria-label이 전달한다. -->
+          <span aria-hidden="true">↻</span>
         </el-button>
         <button class="sort-btn" @click="dashboard.toggleSortOrder()">
           기온순 정렬 · {{ dashboard.sortLabel }}
@@ -337,13 +339,12 @@ const goToDetail = (city) => {
         </template>
       </el-alert>
 
-      <!-- 요약줄이 카드보다 위에 있어서, 카드를 눌러도 바뀐 걸 눈치채기 어려웠다.
-           선택이 바뀔 때마다 잠깐 강조해서 어디를 봐야 하는지 알려준다. -->
+      <!-- 선택 피드백은 카드의 '선택됨' 칩이 맡는다.
+           여기서 한 번 더 번쩍이게 했더니 가로로 긴 영역이 파랗게 깜빡여서 오류처럼 보였다. -->
       <div
         v-if="!weather.isLoading"
-        :key="selectedCityInfo?.id ?? 'none'"
         class="selection"
-        :class="{ 'selection--empty': !selectedCityInfo, 'selection--flash': !!selectedCityInfo }"
+        :class="{ 'selection--empty': !selectedCityInfo }"
       >
         <template v-if="selectedCityInfo">
           <span class="selection__name">{{ selectedCityInfo.name }}</span>
@@ -363,7 +364,10 @@ const goToDetail = (city) => {
       <template v-if="!weather.isLoading && sortedFilteredWeatherList.length > 0">
         <!-- 즐겨찾기한 도시는 위쪽에 따로 모은다. 하나도 없으면 이 묶음 자체가 나타나지 않는다. -->
         <template v-if="favoriteCities.length > 0">
-          <p class="group-title">★ 즐겨찾기 {{ favoriteCities.length }}곳</p>
+          <p class="group-title">
+            <span class="group-title__star" aria-hidden="true">★</span>
+            즐겨찾기 {{ favoriteCities.length }}곳
+          </p>
           <TransitionGroup name="card" tag="div" class="weather-grid">
             <WeatherCard
               v-for="city in favoriteCities"
@@ -419,28 +423,20 @@ const goToDetail = (city) => {
 </template>
 
 <style scoped>
-/* 선택이 바뀌면 한 번 반짝인다. key가 바뀌면서 요소가 새로 그려지므로 애니메이션이 다시 실행된다. */
-@keyframes selection-flash {
-  0% {
-    background-color: var(--sk-accent);
-    color: var(--sk-text-invert);
-  }
-  100% {
-    background-color: var(--sk-accent-weak);
-  }
-}
-.selection--flash {
-  animation: selection-flash 0.45s ease-out;
-}
 .freshness {
   font-size: var(--sk-text-xs);
   color: var(--sk-text-muted);
 }
-/* 묶음 제목. 카드 그리드끼리 붙어 있으면 어디까지가 즐겨찾기인지 알 수 없다. */
+/* 묶음 제목. 카드 그리드끼리 붙어 있으면 어디까지가 즐겨찾기인지 알 수 없다.
+   별표 색(--sk-w-sunny)을 그대로 쓰니 흰 배경에서 대비가 1.94로 거의 안 보였다.
+   별 아이콘만 노란색으로 두고 글자는 본문 색을 쓴다. */
 .group-title {
   margin: 0 0 var(--sk-space-3);
   font-size: var(--sk-text-sm);
   font-weight: 700;
+  color: var(--sk-text);
+}
+.group-title__star {
   color: var(--sk-w-sunny);
 }
 .group-title--sub {
@@ -681,10 +677,16 @@ const goToDetail = (city) => {
   background-color: var(--sk-accent-weak);
   font-size: var(--sk-text-md);
 }
+/* 아직 아무것도 안 고른 상태.
+   전에는 배경색이 카드와 같아서 상자가 안 보이고 글자만 떠 있었다.
+   점선 테두리로 "여기에 뭔가 들어올 자리"라는 게 드러나게 하고, 높이도 줄인다. */
 .selection--empty {
-  background-color: var(--sk-surface-alt);
+  justify-content: center;
+  background-color: transparent;
+  border: 1px dashed var(--sk-border-strong);
   color: var(--sk-text-muted);
-  font-size: var(--sk-text-base);
+  font-size: var(--sk-text-sm);
+  padding: var(--sk-space-3) var(--sk-space-4);
 }
 .selection__name {
   font-size: var(--sk-text-xl);

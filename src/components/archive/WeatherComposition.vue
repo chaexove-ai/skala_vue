@@ -39,7 +39,9 @@ const getStatusClass = (status) => `weather-card--${statusMeta(status).theme}`
 // 3-1) watch: selectedCityInfo를 감시해서, 상태바 문구가 바뀔 때마다 콘솔로그를 남김
 watch(selectedCityInfo, (newCity) => {
   if (newCity) {
-    console.log(`📍 [watch] 상태바 갱신 → ${newCity.name}: ${newCity.status}${statusIcon(newCity.status)}, ${newCity.temp}°`)
+    console.log(
+      `📍 [watch] 상태바 갱신 → ${newCity.name}: ${newCity.status}${statusIcon(newCity.status)}, ${newCity.temp}°`,
+    )
   } else {
     console.log('📍 [watch] 선택된 도시가 없습니다.')
   }
@@ -75,7 +77,9 @@ const expandedCityId = ref(null)
 const toggleDetail = (city) => {
   expandedCityId.value = expandedCityId.value === city.id ? null : city.id
 }
-const expandedCity = computed(() => weatherList.value.find((c) => c.id === expandedCityId.value) ?? null)
+const expandedCity = computed(
+  () => weatherList.value.find((c) => c.id === expandedCityId.value) ?? null,
+)
 const feelsLikeTemp = computed(() => {
   if (!expandedCity.value) return null
   const { temp, status } = expandedCity.value
@@ -97,27 +101,35 @@ watch(filteredWeatherList, (list) => {
 
 <template>
   <div class="practice-section">
-    <p class="exercise-meta">
-      판교 · 5반 · 임채환 · 보관함 경로 <code>/archive/composition</code>
-    </p>
+    <p class="exercise-meta">판교 · 5반 · 임채환 · 보관함 경로 <code>/archive/composition</code></p>
 
-    <h1 class="page-title"><span class="page-title__badge">과제 2</span>🧩 Weather Composition</h1>
+    <!-- 보관함 페이지의 제목(히어로)이 h1이므로 여기서는 h2를 쓴다. 모양은 그대로다. -->
+    <h2 class="page-title"><span class="page-title__badge">과제 2</span>🧩 Weather Composition</h2>
 
     <section class="search-box card-block">
       <h3>도시 이름 검색</h3>
-      <input v-model="searchQuery" type="text" class="search-input" placeholder="도시 이름을 입력해보세요" />
+      <input
+        v-model="searchQuery"
+        type="text"
+        class="search-input"
+        placeholder="도시 이름을 입력해보세요"
+      />
     </section>
 
     <section class="status-box card-block">
       <p class="status-bar">
         <span v-if="selectedCityInfo">
-          <strong>{{ selectedCityInfo.name }}</strong>의 현재 날씨는 {{ selectedCityInfo.status }}{{ statusIcon(selectedCityInfo.status) }},
+          <strong>{{ selectedCityInfo.name }}</strong
+          >의 현재 날씨는 {{ selectedCityInfo.status }}{{ statusIcon(selectedCityInfo.status) }},
           {{ selectedCityInfo.temp }}°입니다.
         </span>
-        <span v-else class="status-bar__placeholder">📍 도시 카드를 클릭하면 여기에 선택된 도시의 상세 정보가 표시됩니다.</span>
+        <span v-else class="status-bar__placeholder"
+          >📍 도시 카드를 클릭하면 여기에 선택된 도시의 상세 정보가 표시됩니다.</span
+        >
       </p>
       <button class="sort-btn" @click="toggleSortOrder">
-        🌡️ 기온순 정렬: {{ sortOrder === 'asc' ? '오름차순 ▲' : sortOrder === 'desc' ? '내림차순 ▼' : '기본 순서' }}
+        🌡️ 기온순 정렬:
+        {{ sortOrder === 'asc' ? '오름차순 ▲' : sortOrder === 'desc' ? '내림차순 ▼' : '기본 순서' }}
       </button>
     </section>
 

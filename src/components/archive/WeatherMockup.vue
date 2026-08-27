@@ -72,11 +72,10 @@ const toggleFavorite = (city) => {
 
 <template>
   <div class="practice-section">
-    <p class="exercise-meta">
-      판교 · 5반 · 임채환 · 보관함 경로 <code>/archive/mockup</code>
-    </p>
+    <p class="exercise-meta">판교 · 5반 · 임채환 · 보관함 경로 <code>/archive/mockup</code></p>
 
-    <h1 class="page-title"><span class="page-title__badge">과제 1</span>⛅️Weather Mockup</h1>
+    <!-- 보관함 페이지의 제목(히어로)이 h1이므로 여기서는 h2를 쓴다. 모양은 그대로다. -->
+    <h2 class="page-title"><span class="page-title__badge">과제 1</span>⛅️Weather Mockup</h2>
 
     <!-- 3) 양방향 바인딩 및 한글 처리 -->
     <section class="search-box card-block">
@@ -88,7 +87,9 @@ const toggleFavorite = (city) => {
         @input="handleSearchInput"
         placeholder="도시 이름을 입력해보세요"
       />
-      <p>입력한 도시명: <strong>{{ searchCity || '-' }}</strong></p>
+      <p>
+        입력한 도시명: <strong>{{ searchCity || '-' }}</strong>
+      </p>
     </section>
 
     <!-- 5) 나만의 추가 기능: 즐겨찾기한 도시만 따로 모아보기 -->
@@ -105,7 +106,10 @@ const toggleFavorite = (city) => {
 
       <!-- 4) 이벤트: 카드 선택 상태바 -->
       <p class="status-bar">
-        <span v-if="selectedCity"><strong>{{ selectedCity }}</strong>{{ getSubjectParticle(selectedCity) }} 선택되었습니다.</span>
+        <span v-if="selectedCity"
+          ><strong>{{ selectedCity }}</strong
+          >{{ getSubjectParticle(selectedCity) }} 선택되었습니다.</span
+        >
         <span v-else>카드를 클릭하면 여기에 선택된 도시가 표시됩니다.</span>
       </p>
 
@@ -129,8 +133,10 @@ const toggleFavorite = (city) => {
           <p class="weather-card__status">{{ city.status }}</p>
 
           <!-- 2) v-if / v-else로 온도 기준 라벨 분기 -->
-          <p v-if="city.temp >= 25" class="weather-card__badge weather-card__badge--hot"> 🔥더움 (25도 이상)</p>
-          <p v-else class="weather-card__badge weather-card__badge--cool"> ❄️선선함 (25도 미만)</p>
+          <p v-if="city.temp >= 25" class="weather-card__badge weather-card__badge--hot">
+            🔥더움 (25도 이상)
+          </p>
+          <p v-else class="weather-card__badge weather-card__badge--cool">❄️선선함 (25도 미만)</p>
 
           <div class="weather-card__actions">
             <!-- 5) 나만의 추가 기능: 즐겨찾기 토글, 클릭이 카드 선택으로 안 번지도록 .stop -->

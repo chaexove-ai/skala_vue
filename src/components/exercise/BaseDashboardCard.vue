@@ -17,7 +17,9 @@ defineProps({
          이 자리에 들어오는 내용은 부모 스코프에서 컴파일되므로, 부모의 상태(도시 개수/정렬 기준)를
          그대로 읽어서 표시할 수 있다. (과제 3-6 참고사항) -->
     <header v-if="title || $slots.badge || $slots.actions" class="card-block__header">
-      <h3 v-if="title" class="card-block__title">{{ title }}</h3>
+      <!-- 페이지 제목(히어로)이 h1이므로 카드 제목은 h2다.
+           h3로 두면 단계가 하나 건너뛰어져서 스크린리더가 목차를 잘못 읽는다. -->
+      <h2 v-if="title" class="card-block__title">{{ title }}</h2>
       <span v-if="$slots.badge" class="card-block__badge"><slot name="badge" /></span>
       <!-- 헤더 오른쪽 액션 자리. 그 카드의 내용을 조작하는 버튼(정렬 등)이 들어간다. -->
       <div v-if="$slots.actions" class="card-block__actions"><slot name="actions" /></div>

@@ -67,17 +67,21 @@ const nameParts = computed(() => {
       class="weather-card__star"
       :class="{ 'weather-card__star--on': favorite }"
       :title="favorite ? '즐겨찾기 해제' : '즐겨찾기 추가'"
+      :aria-label="`${city.name} ${favorite ? '즐겨찾기 해제' : '즐겨찾기 추가'}`"
+      :aria-pressed="favorite"
       @click.stop="$emit('toggle-favorite', city)"
     >
-      {{ favorite ? '★' : '☆' }}
+      <!-- 스크린리더는 버튼 안의 ★를 '검은 별'로 읽는다. 의미는 aria-label이 전달한다. -->
+      <span aria-hidden="true">{{ favorite ? '★' : '☆' }}</span>
     </button>
     <button
       v-if="removable"
       class="weather-card__remove"
       title="목록에서 빼기"
+      :aria-label="`${city.name} 목록에서 빼기`"
       @click.stop="$emit('remove-card', city)"
     >
-      ✕
+      <span aria-hidden="true">✕</span>
     </button>
     <p class="weather-card__name">
       <span v-for="(part, i) in nameParts" :key="i" :class="{ 'is-hit': part.hit }">{{
@@ -87,8 +91,10 @@ const nameParts = computed(() => {
     <p class="weather-card__temp sk-num">{{ displayTemp ?? city.temp }}{{ unitSymbol }}</p>
     <p class="weather-card__status">{{ city.status }}{{ meta.icon }}</p>
 
-    <!-- 선택하면 테두리만 바뀌어서 눌렸는지 알기 어려웠다. 글자로도 알려준다. -->
-    <p v-if="selected" class="weather-card__picked">선택됨</p>
+    <!-- 선택하면 테두리만 바뀌어서 눌렸는지 알기 어려웠다. 글자로도 알려준다.
+         단, 흐름에 끼워 넣으면 카드가 28px 커지면서 누를 때마다 목록 전체가 밀린다.
+         그래서 카드 위에 겹쳐 띄워서 높이에 영향을 주지 않게 한다. -->
+    <span v-if="selected" class="weather-card__picked">선택됨</span>
 
     <button class="detail-btn" @click.stop="$emit('click-detail', city)">
       {{ detailLabel || (expanded ? '상세보기 닫기 ▲' : '상세보기 ▼') }}
@@ -194,7 +200,9 @@ const nameParts = computed(() => {
   background-color: var(--sk-danger-weak);
   color: var(--sk-danger);
 }
+/* 목록에서 먼저 찾는 것은 도시 이름이다. 기온보다 작으면 훑기 어렵다. */
 .weather-card__name {
+  font-size: var(--sk-text-md);
   font-weight: 700;
   color: var(--sk-text);
   margin: 0 0 4px;
@@ -217,10 +225,17 @@ const nameParts = computed(() => {
 }
 
 .weather-card__picked {
-  margin: var(--sk-space-2) 0 0;
+  position: absolute;
+  left: 50%;
+  bottom: -9px;
+  transform: translateX(-50%);
+  background-color: var(--sk-accent);
+  color: var(--sk-text-invert);
+  border-radius: var(--sk-radius-pill);
+  padding: 2px 10px;
   font-size: var(--sk-text-xs);
   font-weight: 700;
-  color: var(--sk-accent);
+  white-space: nowrap;
 }
 .detail-btn {
   margin-top: 10px;

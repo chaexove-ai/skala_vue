@@ -109,11 +109,10 @@ watch(filteredWeatherList, (list) => {
 
 <template>
   <div class="practice-section">
-    <p class="exercise-meta">
-      판교 · 5반 · 임채환 · 보관함 경로 <code>/archive/component</code>
-    </p>
+    <p class="exercise-meta">판교 · 5반 · 임채환 · 보관함 경로 <code>/archive/component</code></p>
 
-    <h1 class="page-title"><span class="page-title__badge">과제 3</span>✂️Weather Component</h1>
+    <!-- 보관함 페이지의 제목(히어로)이 h1이므로 여기서는 h2를 쓴다. 모양은 그대로다. -->
+    <h2 class="page-title"><span class="page-title__badge">과제 3</span>✂️Weather Component</h2>
 
     <!-- 과제 3-6) Slot으로 넘기는 자식(SearchBar / StatusBar / WeatherCard)은 화면상으로는
          BaseDashboardCard 안에 있지만, 스크립트는 부모(WeatherParent) 스코프에서 컴파일된다.

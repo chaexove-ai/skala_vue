@@ -16,14 +16,18 @@ const handleInput = (e) => {
 
 <template>
   <div>
+    <!-- placeholder는 입력을 시작하면 사라지므로 라벨을 대신할 수 없다.
+         화면에는 안 보이지만 스크린리더가 읽을 수 있도록 aria-label을 단다. -->
     <input
       :value="searchQuery"
       type="text"
       class="search-input"
       placeholder="검색할 도시 이름 입력"
+      aria-label="도시 이름으로 목록 검색"
       @input="handleInput"
     />
-    <p class="search-echo">검색 중인 도시: {{ searchQuery.trim() || '전체' }}</p>
+    <!-- 검색어가 없을 때는 "전체"라는 당연한 말이 한 줄을 차지한다. 입력 중일 때만 보여준다. -->
+    <p v-if="searchQuery.trim()" class="search-echo">검색 중인 도시: {{ searchQuery.trim() }}</p>
   </div>
 </template>
 
