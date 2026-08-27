@@ -7,6 +7,7 @@
 // 반응형 상태를 이 화면이 모두 소유하고, 자식은 props/emits로만 통신하는 구조는 그대로다.
 import { ref, reactive, computed, watch, watchEffect, nextTick, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { Refresh, StarFilled } from '@element-plus/icons-vue'
 import { useWeatherStore, MAX_EXTRA_CITIES } from '@/stores/weatherStore.js'
 import { useFavoriteStore } from '@/stores/favoriteStore.js'
 import { searchPlaces } from '@/api/geocodingApi.js'
@@ -222,6 +223,19 @@ const emptyText = computed(() => `"${searchQuery.value.trim()}"와(과) 일치�
 const goToDetail = (city) => {
   router.push(`/weather/${city.id}`)
 }
+
+// 카드에 덧붙일 값. 현재 날씨 응답에 이미 들어 있어서 API를 더 부르지 않는다.
+// 최저/최고(temp_min·temp_max)는 쓰지 않았다. 이 값은 '오늘의 최저/최고'가 아니라
+// 같은 시각 주변 관측소들 사이의 편차라서, 도시 한 곳만 보면 현재 기온과 거의 같게 나온다.
+// (서울 실측: temp 30.8 / min 30.8 / max 31.8) 진짜 일교차는 도시마다 예보를 한 번 더
+// 불러야 알 수 있는데, 목록 전체로는 호출이 두 배가 되므로 상세 화면에만 남겨뒀다.
+const metricsOf = (city) =>
+  city.observation
+    ? {
+        feels: config.displayTemp(city.observation.feelsLike),
+        humidity: city.observation.humidity,
+      }
+    : null
 </script>
 
 <template>
@@ -241,8 +255,9 @@ const goToDetail = (city) => {
           aria-label="날씨 다시 받기"
           @click="refresh"
         >
-          <!-- 기호는 장식이고, 의미는 aria-label이 전달한다. -->
-          <span aria-hidden="true">↻</span>
+          <!-- ↻ 같은 기호 문자는 한글 폰트에 없는 경우가 많아 네모(□)로 보일 수 있다.
+               SVG 아이콘은 폰트와 무관하게 어느 OS에서도 같게 그려진다. -->
+          <el-icon aria-hidden="true"><Refresh /></el-icon>
         </el-button>
         <button class="sort-btn" @click="dashboard.toggleSortOrder()">
           기온순 정렬 · {{ dashboard.sortLabel }}
@@ -365,7 +380,7 @@ const goToDetail = (city) => {
         <!-- 즐겨찾기한 도시는 위쪽에 따로 모은다. 하나도 없으면 이 묶음 자체가 나타나지 않는다. -->
         <template v-if="favoriteCities.length > 0">
           <p class="group-title">
-            <span class="group-title__star" aria-hidden="true">★</span>
+            <el-icon class="group-title__star" aria-hidden="true"><StarFilled /></el-icon>
             즐겨찾기 {{ favoriteCities.length }}곳
           </p>
           <TransitionGroup name="card" tag="div" class="weather-grid">
@@ -377,6 +392,7 @@ const goToDetail = (city) => {
               :query="searchQuery.trim()"
               :display-temp="config.displayTemp(city.temp)"
               :unit-symbol="config.unitSymbol"
+              :metrics="metricsOf(city)"
               detail-label="상세보기 →"
               :removable="city.isExtra === true"
               favoritable
@@ -400,6 +416,7 @@ const goToDetail = (city) => {
             :query="searchQuery.trim()"
             :display-temp="config.displayTemp(city.temp)"
             :unit-symbol="config.unitSymbol"
+            :metrics="metricsOf(city)"
             detail-label="상세보기 →"
             :removable="city.isExtra === true"
             favoritable

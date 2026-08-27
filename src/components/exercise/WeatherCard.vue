@@ -2,6 +2,7 @@
 // 과제 3-4) 선택된 도시 객체를 props로 전달받아 표시하고,
 // 카드 선택(select-card) / 상세보기(click-detail) 이벤트를 부모에게 올려보낸다.
 import { computed, onMounted, onUnmounted } from 'vue'
+import { Star, StarFilled, Close } from '@element-plus/icons-vue'
 import { statusMeta } from '@/data/weatherStatus.js'
 
 const props = defineProps({
@@ -30,6 +31,9 @@ const props = defineProps({
   favoritable: { type: Boolean, default: false },
   favorite: { type: Boolean, default: false },
   feelsLike: { type: Number, default: null },
+  // 카드 아래에 덧붙일 값 { feels, humidity }. 넘기지 않으면 렌더링되지 않으므로
+  // 이 카드를 쓰는 과제 3 화면은 예전 그대로 도시/기온/상태 세 줄만 나온다.
+  metrics: { type: Object, default: null },
 })
 defineEmits(['select-card', 'click-detail', 'remove-card', 'toggle-favorite'])
 
@@ -71,8 +75,13 @@ const nameParts = computed(() => {
       :aria-pressed="favorite"
       @click.stop="$emit('toggle-favorite', city)"
     >
-      <!-- 스크린리더는 버튼 안의 ★를 '검은 별'로 읽는다. 의미는 aria-label이 전달한다. -->
-      <span aria-hidden="true">{{ favorite ? '★' : '☆' }}</span>
+      <!-- ★ 같은 기호 문자는 폰트에 없으면 네모(□)로 보인다.
+           SVG 아이콘은 폰트에 의존하지 않아 어느 OS에서도 같게 그려진다.
+           의미는 aria-label이 전달하므로 아이콘은 장식으로 둔다. -->
+      <el-icon aria-hidden="true">
+        <StarFilled v-if="favorite" />
+        <Star v-else />
+      </el-icon>
     </button>
     <button
       v-if="removable"
@@ -81,7 +90,7 @@ const nameParts = computed(() => {
       :aria-label="`${city.name} 목록에서 빼기`"
       @click.stop="$emit('remove-card', city)"
     >
-      <span aria-hidden="true">✕</span>
+      <el-icon aria-hidden="true"><Close /></el-icon>
     </button>
     <p class="weather-card__name">
       <span v-for="(part, i) in nameParts" :key="i" :class="{ 'is-hit': part.hit }">{{
@@ -90,6 +99,20 @@ const nameParts = computed(() => {
     </p>
     <p class="weather-card__temp sk-num">{{ displayTemp ?? city.temp }}{{ unitSymbol }}</p>
     <p class="weather-card__status">{{ city.status }}{{ meta.icon }}</p>
+
+    <!-- 이름·기온·상태 세 줄만 있으면 카드가 여러 장 늘어섰을 때 같은 것의 반복으로만 읽힌다.
+         체감온도와 습도는 이미 받아둔 응답에 들어 있어서 API를 더 부르지 않고도 채울 수 있다.
+         값-이름 짝이므로 <dl>로 적어 화면 낭독기에서도 짝으로 읽히게 한다. -->
+    <dl v-if="metrics" class="weather-card__metrics">
+      <div class="weather-card__metric">
+        <dt>체감</dt>
+        <dd class="sk-num">{{ metrics.feels }}°</dd>
+      </div>
+      <div class="weather-card__metric">
+        <dt>습도</dt>
+        <dd class="sk-num">{{ metrics.humidity }}%</dd>
+      </div>
+    </dl>
 
     <!-- 선택하면 테두리만 바뀌어서 눌렸는지 알기 어려웠다. 글자로도 알려준다.
          단, 흐름에 끼워 넣으면 카드가 28px 커지면서 누를 때마다 목록 전체가 밀린다.
@@ -222,6 +245,31 @@ const nameParts = computed(() => {
   font-size: 13px;
   color: var(--sk-text-muted);
   margin: 0;
+}
+
+.weather-card__metrics {
+  margin: 10px 0 0;
+  padding-top: 8px;
+  border-top: 1px dashed var(--sk-border);
+  display: grid;
+  gap: 3px;
+  font-size: var(--sk-text-xs);
+}
+/* 이름은 왼쪽, 값은 오른쪽 끝에 맞춘다. 카드를 여러 장 훑을 때 값이 한 세로선에 모여 비교하기 쉽다. */
+.weather-card__metric {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--sk-space-2);
+}
+.weather-card__metric dt {
+  margin: 0;
+  color: var(--sk-text-muted);
+}
+.weather-card__metric dd {
+  margin: 0;
+  font-weight: 600;
+  color: var(--sk-text);
 }
 
 .weather-card__picked {
