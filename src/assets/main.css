@@ -51,7 +51,13 @@ a,
   margin: 0.4rem 0;
 }
 
-.practice-section button {
+/* 1~3일차 실습의 맨 <button>에 최소한의 모양을 입힌다.
+   :not(.el-button)이 필요한 이유 — 4일차 실습은 Element Plus 버튼을 쓰는데,
+   `.practice-section button`(0,1,1)이 `.el-button`(0,1,0)보다 특정도가 높아서
+   배경만 이 규칙으로 덮이고 글자색은 라이브러리의 흰색이 남는다.
+   그러면 흰 글자에 연회색 배경이 되어 글씨가 보이지 않는다.
+   라이브러리가 스스로 칠하는 버튼은 건드리지 않는 것이 맞다. */
+.practice-section button:not(.el-button) {
   margin: 0.3rem 0.3rem 0.3rem 0;
   padding: 0.4rem 0.8rem;
   border: 1px solid var(--sk-border-strong);
@@ -60,7 +66,7 @@ a,
   cursor: pointer;
 }
 
-.practice-section button:hover {
+.practice-section button:not(.el-button):hover {
   background-color: var(--sk-surface-hover);
 }
 
