@@ -86,8 +86,15 @@ const nextHours = computed(() =>
     icon: statusMeta(item.status).icon,
   })),
 )
-const maxForecastTemp = computed(() => Math.max(...nextHours.value.map((h) => h.temp), 0))
-const minForecastTemp = computed(() => Math.min(...nextHours.value.map((h) => h.temp), 99))
+// 앞으로 24시간의 기온 범위.
+// 원래 Math.max(...temps, 0)처럼 씨앗값을 넣어 빈 배열을 막았는데, 그 값이 결과를 오염시킨다.
+// 기온이 전부 영하인 날에는 Math.max(-5, -2, 0)이 0을 돌려줘서 최고기온이 0℃로 잘못 나온다.
+// 씨앗값 대신 "예보를 아직 못 받았으면 아예 계산하지 않는다"로 막는 것이 맞다.
+const forecastRange = computed(() => {
+  const temps = nextHours.value.map((h) => h.temp)
+  if (temps.length === 0) return null
+  return { min: Math.min(...temps), max: Math.max(...temps) }
+})
 
 // 일출·일몰 시각. 현재 날씨 응답에 이미 들어 있어서 따로 호출하지 않는다.
 const sunTimes = computed(() => {
@@ -127,11 +134,19 @@ const observationRows = computed(() => {
       value: `${config.displayTemp(feelsLike.value)}${config.unitSymbol}`,
       hint: 'API가 준 feels_like 값',
     },
-    {
-      label: '최저 / 최고',
-      value: `${config.displayTemp(o.tempMin)} / ${config.displayTemp(o.tempMax)}${config.unitSymbol}`,
-      hint: '오늘 예상 범위',
-    },
+    // 원래 이 칸은 현재날씨 응답의 temp_min·temp_max를 '오늘 예상 범위'라고 적어 보여줬는데,
+    // 그 두 값은 예보가 아니라 같은 시각 주변 관측소들 사이의 편차다. 도시 하나만 보면
+    // 현재 기온과 거의 같아서 '33 / 33℃'처럼 범위 구실을 못 했다. 설명도 사실과 달랐다.
+    // 진짜 범위는 아래 예보 카드가 이미 받아둔 3시간 간격 예보에 들어 있으므로 그것을 쓴다.
+    ...(forecastRange.value
+      ? [
+          {
+            label: '최저 / 최고',
+            value: `${config.displayTemp(forecastRange.value.min)} / ${config.displayTemp(forecastRange.value.max)}${config.unitSymbol}`,
+            hint: '앞으로 24시간 예보 기준',
+          },
+        ]
+      : []),
     {
       label: '습도',
       value: `${o.humidity}%`,
@@ -233,8 +248,9 @@ const observationRows = computed(() => {
           </span>
         </li>
       </ul>
-      <p class="forecast__note">
-        기온 범위 {{ config.displayTemp(minForecastTemp) }}~{{ config.displayTemp(maxForecastTemp)
+      <p v-if="forecastRange" class="forecast__note">
+        기온 범위 {{ config.displayTemp(forecastRange.min) }}~{{
+          config.displayTemp(forecastRange.max)
         }}{{ config.unitSymbol }} · 💧는 강수 확률입니다.
       </p>
     </BaseDashboardCard>

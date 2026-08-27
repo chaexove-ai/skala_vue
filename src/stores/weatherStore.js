@@ -89,7 +89,7 @@ export const useWeatherStore = defineStore('weather', {
       if (this.extraCities.length >= MAX_EXTRA_CITIES) {
         return {
           added: false,
-          reason: `추가 도시는 최대 ${MAX_EXTRA_CITIES}곳까지입니다. 카드의 ✕로 하나 지운 뒤 다시 시도해 주세요.`,
+          reason: `추가 도시는 최대 ${MAX_EXTRA_CITIES}곳까지입니다. 카드의 삭제 버튼으로 하나 지운 뒤 다시 시도해 주세요.`,
         }
       }
 
