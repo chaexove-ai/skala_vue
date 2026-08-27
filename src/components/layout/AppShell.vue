@@ -24,8 +24,12 @@ const weather = useWeatherStore()
 const dashboard = useDashboardStore()
 const config = useConfigStore()
 
-// 사이트를 열면 브라우저에 현재 위치를 물어본다. 거절해도 화면은 그대로 동작한다.
-onMounted(() => weather.detectMyLocation())
+// 현재 위치는 사이트를 열자마자 묻지 않는다.
+// 예전에는 onMounted에서 바로 물어봤는데, 사용자는 화면을 보기도 전에 "내 위치 확인" 권한창을
+// 만나게 된다. 무엇에 쓰는지 모르는 상태에서 위치를 내주는 사람은 없으므로 대개 거절로 끝나고,
+// 브라우저는 한 번 거절한 사이트에 다시 묻지 않아서 그 뒤로는 물어볼 기회조차 없어진다.
+// 그래서 왜 필요한지 먼저 보여주고, 사용자가 버튼을 눌렀을 때 그때 요청한다.
+const askMyLocation = () => weather.detectMyLocation()
 
 // 어떤 빌드가 지금 떠 있는지. 배포한 뒤 "이게 방금 올린 그 빌드가 맞나"를 확인할 방법이 없으면
 // 캐시된 옛 화면을 보면서 고쳐지지 않았다고 착각하게 된다. 푸터에 한 칸 내어 적어둔다.
@@ -111,6 +115,27 @@ const timeOfDay = computed(() => {
               {{ config.displayTemp(heroCity.temp) }}{{ config.unitSymbol }}
             </span>
           </div>
+
+          <!-- 권한을 요청하기 전에 무엇에 쓰는지 먼저 밝힌다.
+               브라우저 권한창은 "내 위치 확인"이라고만 말할 뿐 용도를 설명해주지 않으므로,
+               그 설명은 이 자리에서 해야 한다. 요청은 사용자가 눌렀을 때만 나간다. -->
+          <p v-if="weather.locationStatus === 'idle'" class="hero__ask">
+            <span class="hero__ask-text"
+              >지금은 <strong>{{ heroCity.name }}</strong> 기준입니다.</span
+            >
+            <button class="hero__ask-btn" @click="askMyLocation">
+              📍 내가 있는 곳의 날씨로 보기
+            </button>
+          </p>
+          <p v-else-if="weather.locationStatus === 'asking'" class="hero__ask">
+            <span class="hero__ask-text">위치를 확인하는 중입니다…</span>
+          </p>
+          <p v-else-if="weather.locationStatus === 'denied'" class="hero__ask">
+            <span class="hero__ask-text">
+              위치를 가져오지 못해 {{ heroCity.name }} 기준으로 보여드립니다.
+            </span>
+            <button class="hero__ask-btn" @click="askMyLocation">다시 시도</button>
+          </p>
         </div>
       </div>
     </section>
@@ -248,6 +273,34 @@ const timeOfDay = computed(() => {
   font-weight: 700;
   letter-spacing: -0.02em;
 }
+/* 히어로 위에 얹히는 안내라 배경(하늘 그라데이션)과 대비를 유지해야 한다.
+   본문 정보가 아니라 곁들이는 줄이므로 값보다 작게 둔다. */
+.hero__ask {
+  display: flex;
+  align-items: center;
+  gap: var(--sk-space-3);
+  flex-wrap: wrap;
+  margin: var(--sk-space-3) 0 0;
+  font-size: var(--sk-text-sm);
+}
+.hero__ask-text {
+  opacity: 0.92;
+}
+.hero__ask-btn {
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  background-color: rgba(255, 255, 255, 0.16);
+  color: var(--sk-text-invert);
+  border-radius: var(--sk-radius-pill);
+  padding: 5px 14px;
+  font-size: var(--sk-text-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color var(--sk-transition);
+}
+.hero__ask-btn:hover {
+  background-color: rgba(255, 255, 255, 0.28);
+}
+
 .hero__subtitle {
   margin: var(--sk-space-2) 0 0;
   font-size: var(--sk-text-base);
