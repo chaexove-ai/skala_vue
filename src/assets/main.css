@@ -1,0 +1,77 @@
+@import './base.css';
+@import './tokens.css';
+
+/* 레이아웃(폭/여백)은 AppShell이 책임진다. #app은 통로 역할만 한다. */
+#app {
+  font-family: var(--sk-font);
+  font-weight: normal;
+  color: var(--sk-text);
+  background-color: var(--sk-bg);
+  min-height: 100vh;
+}
+
+a,
+.green {
+  text-decoration: none;
+  color: var(--sk-accent);
+  transition: 0.4s;
+  padding: 3px;
+}
+
+@media (hover: hover) {
+  a:hover {
+    background-color: var(--sk-accent-weak);
+  }
+}
+
+/* 실습 섹션 공통 스타일: 각 practice-section을 카드처럼 구분해서 보여줌 */
+.practice-section {
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  border: 1px solid var(--sk-border);
+  border-radius: var(--sk-radius);
+  background-color: var(--sk-surface);
+}
+
+.practice-section h2 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  font-size: 1.25rem;
+  color: var(--sk-text);
+}
+
+.practice-section h3 {
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+  font-size: 1rem;
+  color: var(--sk-accent);
+}
+
+.practice-section p {
+  margin: 0.4rem 0;
+}
+
+.practice-section button {
+  margin: 0.3rem 0.3rem 0.3rem 0;
+  padding: 0.4rem 0.8rem;
+  border: 1px solid var(--sk-border-strong);
+  border-radius: 4px;
+  background-color: var(--sk-surface-alt);
+  cursor: pointer;
+}
+
+.practice-section button:hover {
+  background-color: var(--sk-surface-hover);
+}
+
+.practice-section input {
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--sk-border-strong);
+  border-radius: 4px;
+}
+
+#app > hr {
+  border: none;
+  border-top: 1px solid var(--sk-border);
+  margin: 1.5rem 0;
+}

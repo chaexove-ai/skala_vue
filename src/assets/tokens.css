@@ -1,0 +1,126 @@
+/* ============================================================================
+ * 디자인 토큰 (Design Tokens)
+ *
+ * 색·타이포·간격을 컴포넌트마다 하드코딩하지 않고 여기 한 곳에서 정의한다.
+ * 각 컴포넌트는 var(--sk-...)로 참조만 하므로, 톤을 바꾸려면 이 파일만 고치면 된다.
+ *
+ * 레이아웃 원칙 (2층 구조)
+ *   1층 감성: 헤더/히어로 = 시간대에 따라 바뀌는 하늘 그라데이션
+ *   2층 정보: 본문 카드 = 중립 회색 서피스. 데이터가 늘어나도 눈이 피로하지 않게.
+ *   → 하늘색은 "분위기"에만 쓰고, 데이터를 읽는 영역은 항상 차분하게 유지한다.
+ * ========================================================================== */
+
+:root {
+  /* --- 하늘 팔레트: 히어로와 강조에만 사용 --------------------------------- */
+  --sk-sky-50: #f0f9ff;
+  --sk-sky-100: #e0f2fe;
+  --sk-sky-200: #bae6fd;
+  --sk-sky-300: #7dd3fc;
+  --sk-sky-400: #38bdf8;
+  --sk-sky-500: #0ea5e9;
+  --sk-sky-600: #0284c7;
+  --sk-sky-700: #0369a1;
+  --sk-sky-800: #075985;
+  --sk-sky-900: #0c4a6e;
+
+  /* --- 중립 팔레트: 본문/카드/테두리 --------------------------------------- */
+  --sk-slate-50: #f8fafc;
+  --sk-slate-100: #f1f5f9;
+  --sk-slate-200: #e2e8f0;
+  --sk-slate-300: #cbd5e1;
+  --sk-slate-500: #64748b;
+  --sk-slate-700: #334155;
+  --sk-slate-900: #0f172a;
+
+  /* --- 시맨틱 색: 컴포넌트는 위 팔레트가 아니라 아래 이름을 쓴다 ------------ */
+  --sk-bg: var(--sk-slate-50);
+  --sk-surface: #ffffff;
+  --sk-surface-alt: var(--sk-slate-50);
+  --sk-surface-hover: var(--sk-slate-100);
+  --sk-border: var(--sk-slate-200);
+  --sk-border-strong: var(--sk-slate-300);
+
+  --sk-text: var(--sk-slate-900);
+  --sk-text-muted: var(--sk-slate-500);
+  --sk-text-invert: #ffffff;
+
+  --sk-accent: var(--sk-sky-600); /* 브랜드색 = 선택된 상태 */
+  --sk-accent-hover: var(--sk-sky-700);
+  --sk-accent-weak: var(--sk-sky-100); /* 배지 배경 */
+  --sk-accent-ring: rgba(2, 132, 199, 0.18); /* 포커스 링 */
+
+  /* 검색 "일치" 표시는 선택(파랑)과 구분되어야 하므로 앰버 계열로 분리 */
+  --sk-highlight: #f59e0b;
+  --sk-highlight-weak: #fef3c7;
+
+  --sk-danger: #b3261e;
+  --sk-danger-weak: #fdecea;
+
+  /* --- 날씨 상태별 카드 톤 (weatherStatus.js의 theme과 이름을 맞춘다) ------- */
+  --sk-w-sunny: #f5a623;
+  --sk-w-sunny-bg: #fff8e1;
+  --sk-w-rain: #1976d2;
+  --sk-w-rain-bg: #e3f2fd;
+  --sk-w-cloud: #607d8b;
+  --sk-w-cloud-bg: #eceff1;
+  --sk-w-overcast: #5c6bc0;
+  --sk-w-overcast-bg: #e8eaf6;
+  --sk-w-default: #90a4ae;
+  --sk-w-default-bg: #eef5ff;
+
+  /* --- 기온대별 색: 그래프에서 뜨겁고 차가운 정도를 색으로 읽게 한다 ------------ */
+  --sk-temp-hot: #ef4444; /* 30° 이상 */
+  --sk-temp-warm: #f97316; /* 27~29° */
+  --sk-temp-mild: #fbbf24; /* 24~26° */
+  --sk-temp-cool: #38bdf8; /* 21~23° */
+  --sk-temp-cold: #2563eb; /* 20° 이하 */
+
+  /* --- 히어로 그라데이션: 시간대별 (AppShell이 클래스로 골라 쓴다) --------- */
+  --sk-hero-dawn: linear-gradient(135deg, #6b7fd7 0%, #f0a9a0 60%, #ffd6a5 100%);
+  --sk-hero-day: linear-gradient(135deg, #0369a1 0%, #38bdf8 55%, #bae6fd 100%);
+  --sk-hero-dusk: linear-gradient(135deg, #1e3a8a 0%, #7c5cbf 55%, #f7a072 100%);
+  --sk-hero-night: linear-gradient(135deg, #0b1220 0%, #14274e 55%, #2d4a7c 100%);
+
+  /* --- 타이포 ------------------------------------------------------------- */
+  --sk-font:
+    'Pretendard', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Segoe UI',
+    'Noto Sans KR', sans-serif;
+  --sk-text-xs: 12px;
+  --sk-text-sm: 13px;
+  --sk-text-base: 14px;
+  --sk-text-md: 16px;
+  --sk-text-lg: 20px;
+  --sk-text-xl: 24px;
+  --sk-text-2xl: 32px;
+  --sk-text-hero: 44px;
+  --sk-text-3xl: 40px;
+  --sk-text-display: 60px;
+
+  /* --- 간격: 4px 배수로 통일 ---------------------------------------------- */
+  --sk-space-1: 4px;
+  --sk-space-2: 8px;
+  --sk-space-3: 12px;
+  --sk-space-4: 16px;
+  --sk-space-5: 20px;
+  --sk-space-6: 24px;
+  --sk-space-8: 32px;
+
+  /* --- 모양 --------------------------------------------------------------- */
+  --sk-radius-sm: 6px;
+  --sk-radius: 10px;
+  --sk-radius-lg: 16px;
+  --sk-radius-pill: 999px;
+
+  --sk-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
+  --sk-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+  --sk-shadow-lg: 0 12px 32px rgba(15, 23, 42, 0.16);
+
+  --sk-container: 1120px;
+  --sk-transition: 0.15s ease;
+}
+
+/* 온도처럼 자릿수가 바뀌는 숫자는 폭이 고정돼야 표가 흔들리지 않는다.
+   (28° → 8°로 바뀔 때 카드가 들썩이는 것을 막는다) */
+.sk-num {
+  font-variant-numeric: tabular-nums;
+}
